@@ -34,28 +34,28 @@ module UIThread =
 
     /// taken and adapted from : http://www.fssnip.net/hL
     let launch_window_on_new_thread() =
-        let w = ref null
-        let c = ref null
+        let mutable w = null
+        let mutable c = null
         let h = new ManualResetEventSlim()
         let isAlive = new ManualResetEventSlim()
         let launcher() =
-            w := new Window()
-            (!w).Loaded.Add(fun _ ->
-                c := SynchronizationContext.Current
+            w <- new Window()
+            w.Loaded.Add(fun _ ->
+                c <- SynchronizationContext.Current
                 h.Set())
-            (!w).Closed.Add(fun _ -> isAlive.Set() )
+            w.Closed.Add(fun _ -> isAlive.Set() )
 
-            (!w).Title <- "Nopeee"
+            w.Title <- "Title"
             let app = new Application()
-            app.Run(!w) |> ignore
+            app.Run(w) |> ignore
         let thread = new Thread(launcher)
         thread.SetApartmentState(ApartmentState.STA)
         thread.IsBackground <- true
-        thread.Name <- sprintf "UI thread for '%s'" "Fahd"
+        thread.Name <- "UI thread"
         thread.Start()
         h.Wait()
         h.Dispose()
-        !w,!c,isAlive
+        w,c,isAlive
 
 
 
@@ -107,7 +107,7 @@ module Processor =
             let _ = Agent<'Msg>.Start (modelProcessor program window sync)
             isAlive <- Some mRes
 
-        member x.Wait() =
+        member __.Wait() =
             isAlive.Value.Wait()
             
 
