@@ -2,6 +2,44 @@
 
 open System.Windows
 
+module VDom =
+
+    type Property =
+        { Name : string
+          Value : obj }
+    type Properties = Properties of Property list  
+    
+    type EventHandler =
+        { Name : string
+          Handler : obj -> unit }
+    type EventHandlers = EventHandlers of EventHandler list  
+             
+
+    type NodeElement = 
+        { Tag : string
+          Properties : Properties
+          Events : EventHandlers
+          //Style : SubTreeStyle
+        }
+
+    type Node =
+        | Control of NodeElement
+        | Container of NodeElement * Node list
+
+    type Window = Window of NodeElement * Node list
+
+module VDomConverter =
+// TODO : 
+//  - Define differenciation of VDOM
+//  - Tag VDOM such that when traversing it in parallel to real DOM
+//    we can now which part of the real DOM we need to update
+//  - Traverse real DOM in parallel to VDOM
+    let f () = ()
+
+module Dom =
+// TODO : define functions that allow simple usage of the DOM in a safer maner
+    let f () = ()
+
 
 module Program =
     open System.Threading
@@ -151,4 +189,3 @@ module Processor =
         ()
 
     
-        
