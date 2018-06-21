@@ -1,26 +1,34 @@
 ﻿namespace Elmish
 
 open System.Windows
-open System
-open System.Windows.Controls
 
 
 module Program =
+    open System.Threading
 
     type Agent<'a> = MailboxProcessor<'a>
 
     type AViewType = Window
 
+
+    type IError =
+        abstract member Description : unit -> string
+
+    type UMOutcome<'Model> = 
+        | Success of 'Model 
+        | Error of IError
+
     type Dispatch<'Msg> = 'Msg -> unit
+
     type Init<'Model> = unit -> 'Model
     type View<'Msg,'Model> = Dispatch<'Msg> -> 'Model -> AViewType
-    type Update<'Msg,'Model> = 'Msg -> 'Model -> 'Model
-
+    type Update<'Msg,'Model> = 'Msg -> 'Model -> UMOutcome<'Model>
 
     type FuncProgram<'Msg,'Model> =
-        { init      : Init<'Model>
-          view      : View<'Msg,'Model>
-          update    : Update<'Msg,'Model> }
+        { init          : Init<'Model>
+          view          : View<'Msg,'Model>
+          update        : Update<'Msg,'Model> 
+          errorHandler  : AViewType -> SynchronizationContext -> IError -> Async<unit>}
 
     type Program<'Msg,'Model> =
         { model     : 'Model
@@ -63,6 +71,7 @@ module Processor =
     open Program
     open System.Threading
     open UIThread
+    open System.Diagnostics
 
     type Agent<'a> = MailboxProcessor<'a>
 
@@ -78,19 +87,25 @@ module Processor =
                         window.Content <- content
                         do! Async.SwitchToThreadPool ()
 
+
                     let! msg = inbox.Receive()
 
 
-                    let model = program.funcs.update msg (program.model)
-                    let program = { program with model = model }
+                    let UMModel = program.funcs.update msg (program.model)
 
-                    do! Async.SwitchToContext sync
-                    let newWindow = program.funcs.view (inbox.Post) (program.model)
-                    let content = newWindow.Content
-                    window.Content <- content
-                    do! Async.SwitchToThreadPool ()
+                    match UMModel with
+                    | Success model ->
+                        let program = { program with model = model }
+
+                        do! Async.SwitchToContext sync
+                        let newWindow = program.funcs.view (inbox.Post) (program.model)
+                        let content = newWindow.Content
+                        window.Content <- content
+                        do! Async.SwitchToThreadPool ()
                 
-                    return! aux program false window sync inbox
+                        return! aux program false window sync inbox
+                    | Error error ->
+                        return! program.funcs.errorHandler window sync error
                 }
             
             aux program true window sync inbox
@@ -112,11 +127,23 @@ module Processor =
             
 
     let mkMVUProgram init view update = 
+        let errorHandler (window:AViewType) sync (error:IError) = 
+            async{
+                Debug.Print(sprintf "Error : %s" (error.Description()) )
+                do! Async.SwitchToContext sync
+                window.Close()
+                do! Async.SwitchToThreadPool ()
+            }
+
+
         let funcs =
-            { init      = init
-              view      = view
-              update    = update }
+            { init          = init
+              view          = view
+              update        = update 
+              errorHandler  = errorHandler }
         funcs 
+
+    let withErrorHandler errorHandler (program:FuncProgram<_,_>) = { program with errorHandler = errorHandler }
 
     let run funcs = 
         let msgProcessor = MessageProcessor(funcs)

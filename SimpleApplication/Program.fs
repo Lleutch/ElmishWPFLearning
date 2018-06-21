@@ -9,12 +9,33 @@ open Elmish.Program
 
 module MVU =
 
-    type Model = { IsClicked : bool }
+    type ModelError =
+        | TooManyClicks
+        interface IError with
+            member x.Description () =
+                match x with
+                | TooManyClicks -> "Number of Expected clicks has been reached"
+
+
+    type Model = 
+        { IsClicked : bool 
+          Clicks : int  }
+
     type Msg = MsgUpdate
-    let init () = { IsClicked = false }
-    let update msg model =  
+
+    let init () = 
+        { IsClicked = false 
+          Clicks = 0 }
+
+    let update msg (model:Model) =  
         match msg with 
-        | MsgUpdate -> { IsClicked = not model.IsClicked }
+        | MsgUpdate -> 
+            if model.Clicks > 2 then
+                Error TooManyClicks
+            else
+                Success 
+                    { IsClicked = not model.IsClicked 
+                      Clicks = model.Clicks + 1  }
 
     let view dispatch (model:Model) =
         let window = Window()
