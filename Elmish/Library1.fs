@@ -347,6 +347,8 @@ module Dom =
         member x.Create() =
             let (Tree (nodeElement,trees)) = x      
             let uiElement = nodeElement.Tag.Create()
+            updateProperties (nodeElement.Properties) uiElement 
+            updateEvents (nodeElement.Events) uiElement 
             addToUIElement uiElement trees
             uiElement
 
