@@ -32,7 +32,7 @@ module MVU =
     let update msg (model:Model) =  
         match msg with 
         | MsgUpdate -> 
-            if model.Clicks > 2 then
+            if model.Clicks > 6 then
                 Error TooManyClicks
             else
                 Success 
@@ -42,23 +42,41 @@ module MVU =
     let view dispatch (model:Model) =
 
         window { WindowProperties.Default with 
-                    Width = Some 300. 
+                    Width = Some 500. 
                     Height = Some 300. }
                WindowEvents.Default
                ( grid GridProperties.Default                      
-                      [ yield button { ButtonProperties.Default with
-                                        Width = Some 55.
-                                        Height = Some 23.
-                                        Margin = Some (new Thickness(90., 50., 107., 0.))
-                                        VerticalAlignment = Some VerticalAlignment.Top
-                                        Content = Some ("Say Hello!" |> box) }
-                                     { ButtonEvents.Default with Click = Some (fun _ -> dispatch MsgUpdate) }   
-                        
-                        if model.IsClicked then 
+                      [ 
+                        if model.IsClicked then                       
+                            yield button { ButtonProperties.Default with
+                                                Width = Some 55.
+                                                Height = Some 23.
+                                                Margin = Some (new Thickness(90., 50., 107., 0.))
+                                                VerticalAlignment = Some VerticalAlignment.Top
+                                                Content = Some ("Say Hello!" |> box) }
+                                         { ButtonEvents.Default with Click = Some (fun _ -> dispatch MsgUpdate) }   
                             yield  textBlock { TextBlockProperties.Default with
                                                 Margin = Some (new Thickness(84.,115.,74.,119.))
                                                 Text = Some "Hello WPF!" }
                                              TextBlockEvents.Default   
+
+                        elif model.Clicks > 4 then
+                            yield button { ButtonProperties.Default with
+                                                Width = Some 55.
+                                                Height = Some 23.
+                                                Margin = Some (new Thickness(90., 50., 107., 0.))
+                                                VerticalAlignment = Some VerticalAlignment.Top
+                                                Content = Some ("No Events!" |> box) }
+                                         ButtonEvents.Default
+                        else
+                            yield button { ButtonProperties.Default with
+                                                Width = Some 55.
+                                                Height = Some 23.
+                                                Margin = Some (new Thickness(90., 50., 107., 0.))
+                                                VerticalAlignment = Some VerticalAlignment.Top
+                                                Content = Some ("Say Hello!" |> box) }
+                                         { ButtonEvents.Default with Click = Some (fun _ -> dispatch MsgUpdate) }                           
+                        
                       ]
                )        
         //let window = Window()

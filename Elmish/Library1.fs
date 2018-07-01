@@ -2,107 +2,6 @@
 
 open System.Windows
 
-//module v =
-//    open System
-//    open System.Windows.Controls
-//    open System.Windows.Controls.Primitives
-
-//    let t = new Button()
-//    t.Click.Add(fun t -> () )
-//    let t () =
-        
-//        let eventsList = 
-//            [   typeof<Button       >.GetEvents()
-//                typeof<Calendar     >.GetEvents()
-//                typeof<CheckBox     >.GetEvents()
-//                typeof<ComboBox     >.GetEvents()
-//                typeof<ContextMenu  >.GetEvents()
-//                typeof<DataGrid     >.GetEvents()
-//                typeof<DatePicker   >.GetEvents()
-//                typeof<Grid         >.GetEvents()
-//                typeof<Image        >.GetEvents()
-//                typeof<Label        >.GetEvents()
-//                typeof<ListBox      >.GetEvents()
-//                typeof<ListView     >.GetEvents()
-//                typeof<Menu         >.GetEvents()
-//                typeof<MenuItem     >.GetEvents()
-//                typeof<PasswordBox  >.GetEvents()
-//                typeof<Popup        >.GetEvents()
-//                typeof<ProgressBar  >.GetEvents()
-//                typeof<RadioButton  >.GetEvents()
-//                typeof<ScrollViewer >.GetEvents()
-//                typeof<Slider       >.GetEvents()
-//                typeof<StackPanel   >.GetEvents()
-//                typeof<TabControl   >.GetEvents()
-//                typeof<TextBlock    >.GetEvents()
-//                typeof<ToggleButton >.GetEvents()
-//                typeof<ToolTip      >.GetEvents()
-//                typeof<Window       >.GetEvents()
-//            ] 
-        
-//        let crossEvents =
-//            eventsList |> List.map(fun props -> props |> Array.map(fun prop -> prop.Name ) |> Set.ofArray)
-//            |> Set.intersectMany
-//            |> Set.toList
-//        let res =
-//            typeof<Button>.GetEvents()
-//            |> List.ofArray
-//            |> List.filter(fun ev -> crossEvents |> List.contains (ev.Name) )
-//            |> List.sortBy(fun ev -> ev.EventHandlerType.Name)
-//            |> List.map(fun ev -> ev.Name,ev.EventHandlerType,ev.DeclaringType )
-//        res |> printfn "%A"
-//        crossEvents |> printfn "%A"
-
-
-    //type Properties =
-    //        IsEnabled           : bool option 
-    //        IsVisible           : bool option 
-    //        Width               : float option
-    //        Height              : float option
-    //        Opacity             : float option
-    //        HorizontalAlignment : HorizontalAlignment option
-    //        Margin              : Thickness option
-    //        VerticalAlignment   : VerticalAlignment option
-    //        Visibility          : Visibility option 
-
-    //type Events =
-    //    { Click : unit }
-
-
-    //let defaultProperties =
-    //    {   IsInitialized       = None
-    //        IsLoaded            = None
-    //        AllowDrop           = None
-    //        IsMouseOver         = None
-    //        IsMouseCaptured     = None
-    //        IsStylusCaptured    = None
-    //        IsKeyboardFocused   = None
-    //        IsFocused           = None
-    //        IsEnabled           = None
-    //        IsVisible           = None
-    //        Focusable           = None
-    //        IsSealed            = None
-    //        ActualWidth         = None
-    //        ActualHeight        = None
-    //        Width               = None
-    //        MinWidth            = None
-    //        MaxWidth            = None
-    //        Height              = None
-    //        MinHeight           = None
-    //        MaxHeight           = None
-    //        Opacity             = None
-    //        HorizontalAlignment = None
-    //        Tag                 = None
-    //        ToolTip             = None
-    //        DesiredSize         = None
-    //        RenderSize          = None
-    //        Name                = None
-    //        Uid                 = None
-    //        Margin              = None
-    //        VerticalAlignment   = None
-    //        Visibility          = None  }
-    //let t = new Button()
-
 module VDom =
     open System.Windows.Controls
     open System.Windows.Media
@@ -149,26 +48,21 @@ module VDom =
         | Opacity             of float 
 
     type VProperties = VProperties of (VProperty*int) list  
+  
 
-
-
-
-
-    type EvLambda<'a> = 'a -> unit
-        
     type VEvent =
         // Button Related
-        | Click         of EvLambda<RoutedEventArgs>
+        | Click         of RoutedEventHandler
         // Text Related
-        | TextInput     of EvLambda<TextCompositionEventArgs>
+        | TextInput     of TextCompositionEventHandler
         // Window Related
-        | Activated     of EvLambda<EventArgs>
-        | Closed        of EvLambda<EventArgs>
-        | Closing       of EvLambda<CancelEventArgs>
-        | Deactivated   of EvLambda<EventArgs>
-        | Loaded        of EvLambda<RoutedEventArgs>
+        | Activated     of EventHandler
+        | Closed        of EventHandler
+        | Closing       of CancelEventHandler
+        | Deactivated   of EventHandler
+        | Loaded        of RoutedEventHandler
 
-    type VEvents = VEvents of VEvent list  
+    type VEvents = VEvents of (VEvent*int) list  
 
 
 
@@ -177,8 +71,6 @@ module VDom =
         | Button 
         | TextBlock
         | Grid
-        | Window
-
 
 
 
@@ -189,7 +81,11 @@ module VDom =
 
     type Tree = Tree of NodeElement * Tree list
 
-    type ViewWindow = ViewWindow of NodeElement * Tree
+    type ViewWindow = 
+        { Properties : VProperties
+          Events : VEvents 
+          Tree : Tree }
+       
 
 open VDom
 
@@ -211,11 +107,16 @@ module Dom =
         | None -> (list,index)
         | Some a -> ((constructor a,index)::list,index)
     
-    let internal bindVEvents (x:option<'a -> unit>) (constructor: EvLambda<'a> -> VEvent) (list:VEvent list) =
+    let internal bindVEvents (x:option<'a -> unit>) (builder: (obj -> 'a -> unit) -> 'b) (constructor: 'b -> VEvent) (listAndIndex:((VEvent*int) list * int)) =
+        let (list,index) = listAndIndex
+        let index = index + 1
         match x with
-        | None -> list
-        | Some a -> (constructor a)::list
+        | None -> (list,index)
+        | Some a -> 
+            let event = builder (fun _ element -> a element)
+            ((constructor event,index)::list,index)
 
+            //let handler = new TextCompositionEventHandler(fun _ arg -> ti arg)    
      
     type WPFObjectUpdate =
         | ButtonUpdate              of (Button -> unit)
@@ -232,7 +133,7 @@ module Dom =
             | Button    -> new Button()     :> UIElement
             | TextBlock -> new TextBlock()  :> UIElement
             | Grid      -> new Grid()       :> UIElement
-            | Window    -> new Window()     :> UIElement
+            //| Window    -> new Window()     :> UIElement
     
     //let w = new Button() 
    
@@ -284,23 +185,37 @@ module Dom =
                 | Opacity             o     -> UIElementUpdate (fun ui -> ui.Opacity <- o)
 
     type VEvent with
-        member x.EventUpdate() =
+           
+        member x.EventAdd() =     
             match x with
             // Button Related
-            | Click         c ->    ButtonUpdate (fun b -> b.Click.Add c)
+            | Click         c ->    ButtonUpdate (fun b -> b.Click.AddHandler c)
             // Text Related
-            | TextInput     ti ->   TextBlockUpdate (fun tb -> tb.TextInput.Add ti) 
+            | TextInput     ti ->   TextBlockUpdate (fun tb -> tb.TextInput.AddHandler ti) 
             // Window Related
-            | Activated     a ->    WindowUpdate (fun w -> w.Activated.Add a) 
-            | Closed        c ->    WindowUpdate (fun w -> w.Closed.Add c) 
-            | Closing       c ->    WindowUpdate (fun w -> w.Closing.Add c) 
-            | Deactivated   d ->    WindowUpdate (fun w -> w.Deactivated.Add d) 
-            | Loaded        l ->    WindowUpdate (fun w -> w.Loaded.Add l) 
+            | Activated     a ->    WindowUpdate (fun w -> w.Activated.AddHandler a) 
+            | Closed        c ->    WindowUpdate (fun w -> w.Closed.AddHandler c) 
+            | Closing       c ->    WindowUpdate (fun w -> w.Closing.AddHandler c) 
+            | Deactivated   d ->    WindowUpdate (fun w -> w.Deactivated.AddHandler d) 
+            | Loaded        l ->    WindowUpdate (fun w -> w.Loaded.AddHandler l) 
+
+        member x.EventDispose() =     
+            match x with
+            // Button Related
+            | Click         c ->    ButtonUpdate (fun b -> b.Click.RemoveHandler c)
+            // Text Related
+            | TextInput     ti ->   TextBlockUpdate (fun tb -> tb.TextInput.RemoveHandler ti) 
+            // Window Related
+            | Activated     a ->    WindowUpdate (fun w -> w.Activated.RemoveHandler a) 
+            | Closed        c ->    WindowUpdate (fun w -> w.Closed.RemoveHandler c) 
+            | Closing       c ->    WindowUpdate (fun w -> w.Closing.RemoveHandler c) 
+            | Deactivated   d ->    WindowUpdate (fun w -> w.Deactivated.RemoveHandler d) 
+            | Loaded        l ->    WindowUpdate (fun w -> w.Loaded.RemoveHandler l) 
 
 
         
 
-
+    
 
     let updateProperties properties (uiElement : UIElement) =
         let (VProperties vprops) = properties
@@ -316,11 +231,11 @@ module Dom =
             | _                                         -> failwith "Code mistake"
             )
 
-    let private updateEvents events (uiElement : UIElement) =
+    let private handleEvents (action:VEvent -> WPFObjectUpdate) events (uiElement : UIElement) =              
         let (VEvents vevents) = events
         vevents
-        |> List.iter( fun vevent ->
-            match vevent.EventUpdate() with
+        |> List.iter( fun (vevent,_) ->
+            match action vevent with
             | ButtonUpdate              buttonUp        -> buttonUp        (uiElement :?> Button) 
             | TextBlockUpdate           textBlockUp     -> textBlockUp     (uiElement :?> TextBlock)
             | GridUpdate                gridUp          -> gridUp          (uiElement :?> Grid)
@@ -330,15 +245,18 @@ module Dom =
             | _                                         -> failwith "Code mistake"
             )
 
+    let internal addHandlerEvents events (uiElement : UIElement) = handleEvents (fun vevent -> vevent.EventAdd()) events uiElement
+            
+    let internal disposeHandlerEvents events (uiElement: UIElement) = handleEvents (fun vevent -> vevent.EventDispose()) events uiElement
 
-
+        
     let rec private addToUIElement (uiElement : UIElement) (trees : Tree list) =
         for tree in trees do
             let (Tree (nodeElement,subTrees)) = tree
             let uiElement2 = nodeElement.Tag.Create()
 
             updateProperties (nodeElement.Properties) uiElement2
-            updateEvents (nodeElement.Events) uiElement2
+            addHandlerEvents (nodeElement.Events) uiElement2
             if not trees.IsEmpty then
                 (uiElement :?> Panel).Children.Add(uiElement2) |> ignore
                 addToUIElement uiElement2 subTrees
@@ -348,17 +266,18 @@ module Dom =
             let (Tree (nodeElement,trees)) = x      
             let uiElement = nodeElement.Tag.Create()
             updateProperties (nodeElement.Properties) uiElement 
-            updateEvents (nodeElement.Events) uiElement 
+            addHandlerEvents (nodeElement.Events) uiElement 
             addToUIElement uiElement trees
             uiElement
 
 
     type ViewWindow with
         member x.Build() =
-            let (ViewWindow (nodeElement, tree)) = x
-            let window = nodeElement.Tag.Create() :?> Window
+            let tree = x.Tree
+            //let (ViewWindow (nodeElement, tree)) = x
+            let window = new Window() //nodeElement.Tag.Create() :?> Window
             let _ = 
-                let (VProperties vprops) = nodeElement.Properties
+                let (VProperties vprops) = x.Properties
                 vprops
                 |> List.iter( fun (vprop,_) ->
                     match vprop.PropertyUpdate() with
@@ -368,10 +287,10 @@ module Dom =
                     | ControlUpdate             controlUp       -> controlUp window
                     | _                                         -> failwith "Code mistake"
                    )
-                let (VEvents vevents) = nodeElement.Events
+                let (VEvents vevents) = x.Events
                 vevents
-                |> List.iter( fun vevent ->
-                    match vevent.EventUpdate() with
+                |> List.iter( fun (vevent,_) ->
+                    match vevent.EventAdd() with
                     | WindowUpdate              windowUp        -> windowUp window
                     | _                                         -> failwith "Code mistake"
                    )
@@ -379,7 +298,7 @@ module Dom =
             let uiElement = nodeElement.Tag.Create()
 
             updateProperties (nodeElement.Properties) uiElement
-            updateEvents (nodeElement.Events) uiElement
+            addHandlerEvents (nodeElement.Events) uiElement
 
             window.Content <- uiElement
             addToUIElement uiElement trees
@@ -473,14 +392,14 @@ module Dom =
     type ButtonEvents =
         { Click : option<RoutedEventArgs -> unit> }
         member internal x.VEvents() =
-            []
-            |> bindVEvents x.Click VEvent.Click
+            ([],0)
+            |> bindVEvents x.Click (fun x -> new RoutedEventHandler(x)) VEvent.Click
         static member Default = 
             { Click = None }
 
     let button (properties:ButtonProperties) (events:ButtonEvents) =
         let vprops  = properties.VProperties() |> fst
-        let vevents = events.VEvents()
+        let vevents = events.VEvents() |> fst
         let node =
             { Tag        = Tag.Button
               Properties = vprops  |> VProperties
@@ -564,14 +483,14 @@ module Dom =
     type TextBlockEvents =
         { TextInput : option<TextCompositionEventArgs -> unit> }
         member x.VEvents() =
-            []
-            |> bindVEvents x.TextInput VEvent.TextInput
+            ([],0)
+            |> bindVEvents x.TextInput (fun x -> new TextCompositionEventHandler(x)) VEvent.TextInput
         static member Default = 
             { TextInput = None }
 
     let textBlock (properties:TextBlockProperties) (events:TextBlockEvents)  =
         let vprops  = properties.VProperties() |> fst
-        let vevents = events.VEvents()
+        let vevents = events.VEvents() |> fst
         let node =
             { Tag        = Tag.TextBlock
               Properties = vprops  |> VProperties
@@ -704,12 +623,12 @@ module Dom =
             Loaded      : option<RoutedEventArgs -> unit>
         }
         member x.VEvents() =
-            []
-            |> bindVEvents x.Activated   VEvent.Activated   
-            |> bindVEvents x.Closed      VEvent.Closed      
-            |> bindVEvents x.Closing     VEvent.Closing  
-            |> bindVEvents x.Deactivated VEvent.Deactivated 
-            |> bindVEvents x.Loaded      VEvent.Loaded      
+            ([],0)
+            |> bindVEvents x.Activated   (fun x -> new EventHandler(x))         VEvent.Activated   
+            |> bindVEvents x.Closed      (fun x -> new EventHandler(x))         VEvent.Closed      
+            |> bindVEvents x.Closing     (fun x -> new CancelEventHandler(x))   VEvent.Closing  
+            |> bindVEvents x.Deactivated (fun x -> new EventHandler(x))         VEvent.Deactivated 
+            |> bindVEvents x.Loaded      (fun x -> new RoutedEventHandler(x))   VEvent.Loaded      
 
         static member Default = 
             {   Activated   = None 
@@ -720,12 +639,10 @@ module Dom =
 
     let window (properties:WindowProperties) (events:WindowEvents) (children:Tree) =
         let vprops  = properties.VProperties() |> fst
-        let vevents = events.VEvents()
-        let node =
-            { Tag        = Tag.Window
-              Properties = vprops   |> VProperties
-              Events     = vevents  |> VEvents  }
-        ViewWindow (node, children)
+        let vevents = events.VEvents() |> fst
+        { Tree = children
+          Properties = vprops   |> VProperties
+          Events     = vevents  |> VEvents  }
 
 
 
@@ -734,6 +651,7 @@ module VDomConverter =
     open System.Windows.Controls
     open VDom
     open Dom
+    open System
 
 // TODO : 
 // X - Define differenciation of VDOM
@@ -750,11 +668,40 @@ module VDomConverter =
     // Locate the node as a list of children position
     type NodeLoc = NodeLoc of int list
     
+
+    type AddEvents      = AddEvents of VEvents
+    type RemoveEvents   = RemoveEvents of VEvents
+
     type Update =
+        | UpEvents      of NodeLoc * RemoveEvents * AddEvents
         | UpProperties  of NodeLoc * VProperties
         | UpNode        of NodeLoc * Tree
         | AddNode       of NodeLoc * Tree
         | RemoveNode    of NodeLoc 
+
+
+
+    let private eventsDifferences (VEvents evOld) (VEvents evNew) (nodeLoc : NodeLoc) =
+        let rec aux (evOld:(VEvent*int) list) (evNew:(VEvent*int) list) (removeEvents : (VEvent*int) list) (addEvents : (VEvent*int) list) =
+            match evOld,evNew with
+            | (hdOld,indOld)::tlOld , (hdNew,indNew)::tlNew ->
+                if indOld > indNew then
+                    aux tlOld evNew ((hdOld,indOld)::removeEvents) addEvents
+                elif indOld < indNew then
+                    aux evOld tlNew removeEvents ((hdNew,indNew)::addEvents)
+                else
+                    aux tlOld tlNew  ((hdOld,indOld)::removeEvents) ((hdNew,indNew)::addEvents)
+                    
+            | [] , (hd,ind)::tl -> aux [] tl removeEvents ((hd,ind)::addEvents)
+            | (hd,ind)::tl , [] -> aux tl [] ((hd,ind)::removeEvents) addEvents
+            | [] , [] -> (removeEvents,addEvents)
+        
+        match (aux evOld evNew [] []) with
+        | [] , []           -> UpEvents (nodeLoc, RemoveEvents (VEvents []) , AddEvents (VEvents []) )
+        | [] , addEvents    -> UpEvents (nodeLoc, RemoveEvents (VEvents []) , AddEvents (VEvents addEvents) )
+        | remEvents , []    -> UpEvents (nodeLoc, RemoveEvents (VEvents remEvents) , AddEvents (VEvents []) )
+        | remEvents , addEvents -> UpEvents (nodeLoc, RemoveEvents (VEvents remEvents) , AddEvents (VEvents addEvents) )
+
 
     
     /// finds the differences to do for 2 list of properties 
@@ -783,13 +730,14 @@ module VDomConverter =
         | []        -> []
         | vprops    -> [UpProperties (nodeLoc, VProperties vprops)]                
 
-    let treeDiff (ViewWindow (windowOld,subTreeOld)) (ViewWindow (windowNew,subTreeNew)) =
+    let treeDiff (windowOld:ViewWindow) (windowNew:ViewWindow) =
         let rec aux (Tree (nodeOld,subsOld)) (Tree (nodeNew,subsNew)) (NodeLoc nodeLoc) =
             if nodeOld.Tag = nodeNew.Tag then
                 match subsOld,subsNew with
                 | [] , [] -> 
-                    let up = propertiesDifferences (nodeOld.Properties) (nodeNew.Properties) (NodeLoc nodeLoc)
-                    up
+                    let upProps  = propertiesDifferences (nodeOld.Properties) (nodeNew.Properties) (NodeLoc nodeLoc)
+                    let upEvents = eventsDifferences (nodeOld.Events) (nodeNew.Events) (NodeLoc nodeLoc)
+                    upEvents::upProps
                 | [] , _ -> 
                     let updates = 
                         subsNew
@@ -829,9 +777,10 @@ module VDomConverter =
             else
                 [UpNode (NodeLoc nodeLoc,(Tree (nodeNew,subsNew)))]
 
-        let update = propertiesDifferences (windowOld.Properties) (windowNew.Properties) (NodeLoc [])
-        let updates = aux subTreeOld subTreeNew (NodeLoc [0])
-        update@updates
+        let updateProperties = propertiesDifferences (windowOld.Properties) (windowNew.Properties) (NodeLoc [])
+        let updateEvents     = eventsDifferences (windowOld.Events) (windowNew.Events) (NodeLoc [])
+        let updates = aux (windowOld.Tree) (windowNew.Tree) (NodeLoc [0])
+        updateEvents::updateProperties@updates
 
     let private getUIElement (window:Window) (nodeLoc:int list) = 
         let rec aux (uiElement:UIElement) (nodeLoc:int list) =
@@ -851,6 +800,10 @@ module VDomConverter =
             | [] -> ()
             | update::tl ->
                 match update with
+                | UpEvents      ((NodeLoc nodeLoc), RemoveEvents removeEvents, AddEvents addEvents) ->
+                    let uiElement = getUIElement window nodeLoc
+                    disposeHandlerEvents removeEvents uiElement
+                    addHandlerEvents addEvents uiElement
                 | UpProperties  ((NodeLoc nodeLoc),vprops) ->
                     let uiElement = getUIElement window nodeLoc
                     updateProperties vprops uiElement
@@ -994,6 +947,7 @@ module UIThread =
         let isAlive = new ManualResetEventSlim()
         let launcher() =
             w <- new Window()
+            w.Content <- new Controls.Grid()
             w.Loaded.Add(fun _ ->
                 c <- SynchronizationContext.Current
                 h.Set())
@@ -1032,8 +986,10 @@ module Processor =
                         async{
                             if initial then
                                 let newWindow = program.funcs.view (inbox.Post) (program.model)
+                                let updates = treeDiff oldView newWindow
+
                                 do! Async.SwitchToContext sync
-                                window.Content <- newWindow.Build().Content
+                                updateWindow window updates
                                 do! Async.SwitchToThreadPool ()
                                 return newWindow
                             else
@@ -1062,10 +1018,6 @@ module Processor =
 
 
             let stubWindow =
-                let nodeElementWindow = 
-                    { Tag = Tag.Window
-                      Properties = VProperties []
-                      Events = VEvents [] }
 
                 let nodeElementGrid = 
                     { Tag = Tag.Grid
@@ -1073,7 +1025,9 @@ module Processor =
                       Events = VEvents [] }
                 
                 let tree = Tree (nodeElementGrid,[])
-                ViewWindow (nodeElementWindow,tree)
+                { Tree = tree
+                  Properties = VProperties []
+                  Events = VEvents [] }
 
             aux program true stubWindow window sync inbox
         
