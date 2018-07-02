@@ -39,46 +39,47 @@ module MVU =
                     { IsClicked = not model.IsClicked 
                       Clicks = model.Clicks + 1  }
 
+
+    let viewGridChildren dispatch (model:Model) = 
+        [   if model.IsClicked then                       
+                yield button { ButtonProperties.Default with
+                                    Width = Some 55.
+                                    Height = Some 23.
+                                    Margin = Some (new Thickness(90., 50., 107., 0.))
+                                    VerticalAlignment = Some VerticalAlignment.Top
+                                    Content = Some ("Say Hello!" |> box) }
+                                { ButtonEvents.Default with Click = Some (fun _ -> dispatch MsgUpdate) }   
+                yield  textBlock { TextBlockProperties.Default with
+                                    Margin = Some (new Thickness(84.,115.,74.,119.))
+                                    Text = Some "Hello WPF!" }
+                                    TextBlockEvents.Default   
+
+            //elif model.Clicks > 4 then
+            //    yield button { ButtonProperties.Default with
+            //                        Width = Some 55.
+            //                        Height = Some 23.
+            //                        Margin = Some (new Thickness(90., 50., 107., 0.))
+            //                        VerticalAlignment = Some VerticalAlignment.Top
+            //                        Content = Some ("No Events!" |> box) }
+            //                 ButtonEvents.Default
+            else
+                yield button { ButtonProperties.Default with
+                                    Width = Some 55.
+                                    Height = Some 23.
+                                    Margin = Some (new Thickness(90., 50., 107., 0.))
+                                    VerticalAlignment = Some VerticalAlignment.Top
+                                    Content = Some ("Say Hello!" |> box) }
+                                { ButtonEvents.Default with Click = Some (fun _ -> dispatch MsgUpdate) }                                           
+        ]
+
+    
     let view dispatch (model:Model) =
 
         window { WindowProperties.Default with 
                     Width = Some 500. 
                     Height = Some 300. }
                WindowEvents.Default
-               ( grid GridProperties.Default                      
-                      [ 
-                        if model.IsClicked then                       
-                            yield button { ButtonProperties.Default with
-                                                Width = Some 55.
-                                                Height = Some 23.
-                                                Margin = Some (new Thickness(90., 50., 107., 0.))
-                                                VerticalAlignment = Some VerticalAlignment.Top
-                                                Content = Some ("Say Hello!" |> box) }
-                                         { ButtonEvents.Default with Click = Some (fun _ -> dispatch MsgUpdate) }   
-                            yield  textBlock { TextBlockProperties.Default with
-                                                Margin = Some (new Thickness(84.,115.,74.,119.))
-                                                Text = Some "Hello WPF!" }
-                                             TextBlockEvents.Default   
-
-                        elif model.Clicks > 4 then
-                            yield button { ButtonProperties.Default with
-                                                Width = Some 55.
-                                                Height = Some 23.
-                                                Margin = Some (new Thickness(90., 50., 107., 0.))
-                                                VerticalAlignment = Some VerticalAlignment.Top
-                                                Content = Some ("No Events!" |> box) }
-                                         ButtonEvents.Default
-                        else
-                            yield button { ButtonProperties.Default with
-                                                Width = Some 55.
-                                                Height = Some 23.
-                                                Margin = Some (new Thickness(90., 50., 107., 0.))
-                                                VerticalAlignment = Some VerticalAlignment.Top
-                                                Content = Some ("Say Hello!" |> box) }
-                                         { ButtonEvents.Default with Click = Some (fun _ -> dispatch MsgUpdate) }                           
-                        
-                      ]
-               )        
+               ( grid GridProperties.Default ((viewGridChildren dispatch model)@(viewGridChildren dispatch model)) )        
         //let window = Window()
         //window.Width <- 300.
         //window.Height <- 300.

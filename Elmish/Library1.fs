@@ -755,25 +755,28 @@ module VDomConverter =
                             let nodeLoc = index::revList |> List.rev
                             RemoveNode (NodeLoc nodeLoc) 
                            )
+                        |> List.rev
                     updates
                 | _ , _ ->
-                    let rec aux2 (subsOld : Tree list) (subsNew : Tree list) (updates:Update list) (revList:int list) (index:int) =
+                    let rec aux2 (subsOld : Tree list) (subsNew : Tree list) (updates:Update list) (removeNodes : Update list) (revList:int list) (index:int) =
                         match subsOld,subsNew with
-                        | [],[] -> updates |> List.rev
+                        | [],[] -> (updates |> List.rev)@removeNodes
                         | _::tlOld , [] -> 
                             let nodeLoc = index::revList |> List.rev
-                            let update = RemoveNode (NodeLoc nodeLoc) 
-                            aux2 tlOld [] (update::updates) revList (index + 1)
+                            let removeNode = RemoveNode (NodeLoc nodeLoc) 
+                            let res = aux2 tlOld [] updates (removeNode::removeNodes) revList (index + 1)
+                            res
                         | [] , hdNew::tlNew ->
                             let nodeLoc = index::revList |> List.rev
                             let update = AddNode (NodeLoc nodeLoc,hdNew) 
-                            aux2 [] tlNew (update::updates) revList (index + 1)
+                            aux2 [] tlNew (update::updates) removeNodes revList (index + 1)
                         | hdOld::tlOld , hdNew::tlNew ->
                             let nodeLoc = index::revList |> List.rev
                             let newUpdates = aux hdOld hdNew (NodeLoc nodeLoc) 
-                            aux2 tlOld tlNew (newUpdates@updates) revList (index + 1)
+                            aux2 tlOld tlNew (newUpdates@updates) removeNodes revList (index + 1)
                     let revList = List.rev nodeLoc
-                    aux2 subsOld subsNew [] revList 0
+                    let res = aux2 subsOld subsNew [] [] revList 0
+                    res
             else
                 [UpNode (NodeLoc nodeLoc,(Tree (nodeNew,subsNew)))]
 
