@@ -52,7 +52,9 @@
   <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="Library1.fs" />
+    <Compile Include="VDom.fs" />
+    <Compile Include="DSL.fs" />
+    <Compile Include="ElmishProgram.fs" />
     <Content Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
