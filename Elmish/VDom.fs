@@ -12,6 +12,14 @@ module VDom =
         open System
         open System.ComponentModel
 
+        type ColDef = 
+            { Width : int
+              Unit  : GridUnitType }
+
+        type RowDef = 
+            { Height : int
+              Unit   : GridUnitType }
+
         type VProperty =
             // Window Related
             | WindowStyle         of WindowStyle
@@ -20,8 +28,8 @@ module VDom =
             | ResizeMode          of ResizeMode
             | AllowsTransparency  of bool 
             // Layout Related
-            | ColumnDefinitions   of ColumnDefinition list
-            | RowDefinitions      of RowDefinition list
+            | ColumnDefinitions   of ColDef list
+            | RowDefinitions      of RowDef list
             | Column              of int 
             | ColumnSpan          of int 
             | Row                 of int 
@@ -67,11 +75,17 @@ module VDom =
 
         type VEvents = VEvents of (VEvent*int) list  
 
-
-        type Tag =
+        type TaggedContainer =
+            | Grid
+            | StackPanel
+            
+        type TaggedControl  =
             | Button 
             | TextBlock
-            | Grid
+ 
+        type Tag =
+            | Container of TaggedContainer
+            | Control   of TaggedControl
 
         type NodeElement = 
             { Tag : Tag
@@ -93,7 +107,24 @@ module VDom =
         open System.Windows
         open System.Windows.Controls
         open VDomTypes
-    
+
+
+
+
+        type ColDef with
+            member x.Convert() = 
+                let cd = new ColumnDefinition()
+                let width = new GridLength(x.Width |> float,x.Unit)
+                cd.Width <- width
+                cd
+
+        type RowDef with
+            member x.Convert() = 
+                let rd = new RowDefinition()
+                let height = new GridLength(x.Height |> float,x.Unit)
+                rd.Height <- height
+                rd
+              
         type WPFObjectUpdate =
             | ButtonUpdate              of (Button -> unit)
             | TextBlockUpdate           of (TextBlock -> unit)
@@ -103,12 +134,14 @@ module VDom =
             | FrameworkElementUpdate    of (FrameworkElement -> unit)
             | ControlUpdate             of (Control -> unit)
 
+        
         type Tag with
             member x.Create() =
                 match x with
-                | Button    -> new Button()     :> UIElement
-                | TextBlock -> new TextBlock()  :> UIElement
-                | Grid      -> new Grid()       :> UIElement
+                | Container Grid        -> new Grid()       :> UIElement
+                | Container StackPanel  -> new VirtualizingStackPanel() :> UIElement
+                | Control   Button      -> new Button()     :> UIElement
+                | Control   TextBlock   -> new TextBlock()  :> UIElement
 
         // TODO : Define something cleaner as currently it is not ok yet
         type VProperty with
@@ -121,8 +154,8 @@ module VDom =
                     | ResizeMode          rm    -> WindowUpdate (fun w -> w.ResizeMode <- rm) 
                     | AllowsTransparency  at    -> WindowUpdate (fun w -> w.AllowsTransparency <- at) 
                     // Layout Related
-                    | ColumnDefinitions   cd    -> GridUpdate (fun gr -> cd |> List.iter(fun c -> gr.ColumnDefinitions.Add(c)) ) 
-                    | RowDefinitions      rd    -> GridUpdate (fun gr -> rd |> List.iter(fun r -> gr.RowDefinitions.Add(r)) ) 
+                    | ColumnDefinitions   cd    -> GridUpdate (fun gr -> cd |> List.iter(fun c -> gr.ColumnDefinitions.Add(c.Convert())) ) 
+                    | RowDefinitions      rd    -> GridUpdate (fun gr -> rd |> List.iter(fun r -> gr.RowDefinitions.Add(r.Convert())) ) 
                     | Column              c     -> UIElementUpdate (fun ui -> Grid.SetColumn(ui,c)) 
                     | ColumnSpan          cs    -> UIElementUpdate (fun ui -> Grid.SetColumnSpan(ui,cs)) 
                     | Row                 r     -> UIElementUpdate (fun ui -> Grid.SetRow(ui,r)) 
@@ -354,63 +387,64 @@ module VDom =
                 | [] , [] -> updates
         
             match (aux propOld propNew []) with
-            | []        -> []
-            | vprops    -> [UpProperties (nodeLoc, VProperties vprops)]                
+            | []        -> UpProperties (nodeLoc, VProperties [])
+            | vprops    -> UpProperties (nodeLoc, VProperties vprops)                
 
         let treeDiff (windowOld:ViewWindow) (windowNew:ViewWindow) =
             let rec aux (Tree (nodeOld,subsOld)) (Tree (nodeNew,subsNew)) (NodeLoc nodeLoc) =
                 if nodeOld.Tag = nodeNew.Tag then
-                    match subsOld,subsNew with
-                    | [] , [] -> 
-                        let upProps  = propertiesDifferences (nodeOld.Properties) (nodeNew.Properties) (NodeLoc nodeLoc)
-                        let upEvents = eventsDifferences (nodeOld.Events) (nodeNew.Events) (NodeLoc nodeLoc)
-                        upEvents::upProps
-                    | [] , _ -> 
-                        let updates = 
-                            subsNew
-                            |> List.mapi(fun index sub -> 
-                                let revList = List.rev nodeLoc
-                                let nodeLoc = index::revList |> List.rev
-                                AddNode ((NodeLoc nodeLoc),sub) 
-                               )
-                        updates
-                    | _ , [] ->
-                        let updates = 
-                            subsNew
-                            |> List.mapi(fun index _ -> 
-                                let revList = List.rev nodeLoc
-                                let nodeLoc = index::revList |> List.rev
-                                RemoveNode (NodeLoc nodeLoc) 
-                               )
-                            |> List.rev
-                        updates
-                    | _ , _ ->
-                        let rec aux2 (subsOld : Tree list) (subsNew : Tree list) (updates:Update list) (removeNodes : Update list) (revList:int list) (index:int) =
-                            match subsOld,subsNew with
-                            | [],[] -> (updates |> List.rev)@removeNodes
-                            | _::tlOld , [] -> 
-                                let nodeLoc = index::revList |> List.rev
-                                let removeNode = RemoveNode (NodeLoc nodeLoc) 
-                                let res = aux2 tlOld [] updates (removeNode::removeNodes) revList (index + 1)
-                                res
-                            | [] , hdNew::tlNew ->
-                                let nodeLoc = index::revList |> List.rev
-                                let update = AddNode (NodeLoc nodeLoc,hdNew) 
-                                aux2 [] tlNew (update::updates) removeNodes revList (index + 1)
-                            | hdOld::tlOld , hdNew::tlNew ->
-                                let nodeLoc = index::revList |> List.rev
-                                let newUpdates = aux hdOld hdNew (NodeLoc nodeLoc) 
-                                aux2 tlOld tlNew (newUpdates@updates) removeNodes revList (index + 1)
-                        let revList = List.rev nodeLoc
-                        let res = aux2 subsOld subsNew [] [] revList 0
-                        res
+                    let upProps  = propertiesDifferences (nodeOld.Properties) (nodeNew.Properties) (NodeLoc nodeLoc)
+                    let upEvents = eventsDifferences (nodeOld.Events) (nodeNew.Events) (NodeLoc nodeLoc)
+                    let updates = 
+                        match subsOld,subsNew with
+                        | [] , [] -> []
+                        | [] , _ -> 
+                            let updates = 
+                                subsNew
+                                |> List.mapi(fun index sub -> 
+                                    let revList = List.rev nodeLoc
+                                    let nodeLoc = index::revList |> List.rev
+                                    AddNode ((NodeLoc nodeLoc),sub) 
+                                   )
+                            updates
+                        | _ , [] ->
+                            let updates = 
+                                subsNew
+                                |> List.mapi(fun index _ -> 
+                                    let revList = List.rev nodeLoc
+                                    let nodeLoc = index::revList |> List.rev
+                                    RemoveNode (NodeLoc nodeLoc) 
+                                   )
+                                |> List.rev
+                            updates
+                        | _ , _ ->
+                            let rec aux2 (subsOld : Tree list) (subsNew : Tree list) (updates:Update list) (removeNodes : Update list) (revList:int list) (index:int) =
+                                match subsOld,subsNew with
+                                | [],[] -> (updates |> List.rev)@removeNodes
+                                | _::tlOld , [] -> 
+                                    let nodeLoc = index::revList |> List.rev
+                                    let removeNode = RemoveNode (NodeLoc nodeLoc) 
+                                    let res = aux2 tlOld [] updates (removeNode::removeNodes) revList (index + 1)
+                                    res
+                                | [] , hdNew::tlNew ->
+                                    let nodeLoc = index::revList |> List.rev
+                                    let update = AddNode (NodeLoc nodeLoc,hdNew) 
+                                    aux2 [] tlNew (update::updates) removeNodes revList (index + 1)
+                                | hdOld::tlOld , hdNew::tlNew ->
+                                    let nodeLoc = index::revList |> List.rev
+                                    let newUpdates = aux hdOld hdNew (NodeLoc nodeLoc) 
+                                    aux2 tlOld tlNew (newUpdates@updates) removeNodes revList (index + 1)
+                            let revList = List.rev nodeLoc
+                            let res = aux2 subsOld subsNew [] [] revList 0
+                            res
+                    upEvents::upProps::updates
                 else
                     [UpNode (NodeLoc nodeLoc,(Tree (nodeNew,subsNew)))]
 
             let updateProperties = propertiesDifferences (windowOld.Properties) (windowNew.Properties) (NodeLoc [])
             let updateEvents     = eventsDifferences (windowOld.Events) (windowNew.Events) (NodeLoc [])
             let updates = aux (windowOld.Tree) (windowNew.Tree) (NodeLoc [0])
-            updateEvents::updateProperties@updates
+            updateEvents::updateProperties::updates
 
         let private getUIElement (window:Window) (nodeLoc:int list) = 
             let rec aux (uiElement:UIElement) (nodeLoc:int list) =

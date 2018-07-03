@@ -34,7 +34,7 @@ module DSL =
 
         /// Layout
         //typeof<Grid         >.GetProperties() XXX   
-        //typeof<StackPanel   >.GetProperties()
+        //typeof<StackPanel   >.GetProperties() XXX
 
         /// Control
         //typeof<Button       >.GetProperties() XXX
@@ -213,8 +213,8 @@ module DSL =
                 ColumnSpan          : int option
                 Row                 : int option
                 RowSpan             : int option
-                ColumnDefinitions   : ColumnDefinition list option
-                RowDefinitions      : RowDefinition list option
+                ColumnDefinitions   : ColDef list option
+                RowDefinitions      : RowDef list option
                 Background          : Brush option 
                 IsEnabled           : bool option 
                 Width               : float option
@@ -249,6 +249,56 @@ module DSL =
                     RowSpan             = None
                     ColumnDefinitions   = None  
                     RowDefinitions      = None  
+                    Background          = None  
+                    IsEnabled           = None  
+                    Width               = None  
+                    Height              = None  
+                    Opacity             = None  
+                    HorizontalAlignment = None  
+                    Margin              = None  
+                    VerticalAlignment   = None  
+                    Visibility          = None  }
+
+
+
+        (*** ****************** ***) 
+        (***      StackPanel    ***) 
+        (*** ****************** ***) 
+        type SPProperties =
+            {   Column              : int option
+                ColumnSpan          : int option
+                Row                 : int option
+                RowSpan             : int option
+                Background          : Brush option 
+                IsEnabled           : bool option 
+                Width               : float option
+                Height              : float option
+                Opacity             : float option
+                HorizontalAlignment : HorizontalAlignment option
+                Margin              : Thickness option
+                VerticalAlignment   : VerticalAlignment option
+                Visibility          : Visibility option     }
+            member internal x.VProperties() =
+                ([],0)
+                |> bindVProperties  x.Column                VProperty.Column
+                |> bindVProperties  x.ColumnSpan            VProperty.ColumnSpan         
+                |> bindVProperties  x.Row                   VProperty.Row   
+                |> bindVProperties  x.RowSpan               VProperty.RowSpan         
+                |> bindVProperties  x.Background            VProperty.Background      
+                |> bindVProperties  x.IsEnabled             VProperty.IsEnabled          
+                |> bindVProperties  x.Width                 VProperty.Width           
+                |> bindVProperties  x.Height                VProperty.Height             
+                |> bindVProperties  x.Opacity               VProperty.Opacity            
+                |> bindVProperties  x.HorizontalAlignment   VProperty.HorizontalAlignment
+                |> bindVProperties  x.Margin                VProperty.Margin 
+                |> bindVProperties  x.VerticalAlignment     VProperty.VerticalAlignment  
+                |> bindVProperties  x.Visibility            VProperty.Visibility       
+            static member Default =
+                {   
+                    Column              = None
+                    ColumnSpan          = None
+                    Row                 = None
+                    RowSpan             = None
                     Background          = None  
                     IsEnabled           = None  
                     Width               = None  
@@ -349,7 +399,7 @@ module DSL =
             let vprops  = properties.VProperties() |> fst
             let vevents = events.VEvents() |> fst
             let node =
-                { Tag        = Tag.Button
+                { Tag        = Tag.Control Button
                   Properties = vprops  |> VProperties
                   Events     = vevents |> VEvents  }
             Tree (node, [])
@@ -359,7 +409,7 @@ module DSL =
             let vprops  = properties.VProperties() |> fst
             let vevents = events.VEvents() |> fst
             let node =
-                { Tag        = Tag.TextBlock
+                { Tag        = Tag.Control TextBlock
                   Properties = vprops  |> VProperties
                   Events     = vevents |> VEvents  }
             Tree (node, [])
@@ -368,11 +418,18 @@ module DSL =
         let grid (properties:GridProperties) (children:Tree list) =
             let vprops  = properties.VProperties() |> fst
             let node =
-                { Tag        = Tag.Grid
+                { Tag        = Tag.Container Grid
                   Properties = vprops   |> VProperties
                   Events     = []       |> VEvents  }
             Tree (node, children)
 
+        let stackPanel (properties:SPProperties) (children:Tree list) =
+            let vprops  = properties.VProperties() |> fst
+            let node =
+                { Tag        = Tag.Container StackPanel
+                  Properties = vprops   |> VProperties
+                  Events     = []       |> VEvents  }
+            Tree (node, children)
 
         let window (properties:WindowProperties) (events:WindowEvents) (children:Tree) =
             let vprops  = properties.VProperties() |> fst

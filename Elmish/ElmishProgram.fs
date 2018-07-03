@@ -120,7 +120,7 @@ module Processor =
             let stubWindow =
 
                 let nodeElementGrid = 
-                    { Tag = Tag.Grid
+                    { Tag = Tag.Container Grid
                       Properties = VProperties []
                       Events = VEvents [] }
                 
