@@ -5,21 +5,22 @@ module ProgramTypes =
     open System.Windows
     open System.Threading
     open VDom.VDomTypes
+    open System.Diagnostics
 
     type Agent<'a> = MailboxProcessor<'a>
 
     type IError =
         abstract member Description : unit -> string
 
-    type UMOutcome<'Model> = 
-        | Success of 'Model 
+    type Outcome<'a> = 
+        | Success of 'a
         | Error of IError
 
     type Dispatch<'Msg> = 'Msg -> unit
 
     type Init<'Model> = unit -> 'Model
     type View<'Msg,'Model> = Dispatch<'Msg> -> 'Model -> ViewWindow
-    type Update<'Msg,'Model> = 'Msg -> 'Model -> UMOutcome<'Model>
+    type Update<'Msg,'Model> = 'Msg -> 'Model -> Outcome<'Model>
 
     type FuncProgram<'Msg,'Model> =
         { init          : Init<'Model>
@@ -27,9 +28,28 @@ module ProgramTypes =
           update        : Update<'Msg,'Model> 
           errorHandler  : Window -> SynchronizationContext -> IError -> Async<unit>}
 
+
+    type Token = internal Token of int            
+
+    type Subscriptions = Subscriptions of Map<Token,Async<Outcome<unit>>>
+
+    type Time = Time of int
+    type ModelState<'Msg,'Model> = 
+        { Model : 'Model
+          Msg   : 'Msg  }
+           
+            
+    type ModelStates<'Msg,'Model> = ModelStates of Map<Time,ModelState<'Msg,'Model>>
+
     type Program<'Msg,'Model> =
         { model     : 'Model
-          funcs     : FuncProgram<'Msg,'Model> }
+          // TODO : FOR FUTURE USE : For tracking the state of the model allowing use to have an undo/redo mechanism for debugging purposes
+          states    : ModelStates<'Msg,'Model>
+          funcs     : FuncProgram<'Msg,'Model> 
+          // TODO : FOR FUTURE USE : For handling Asynchronous flows that could also communicate with the external world 
+          //      : Side-effects should/could only happen here and they can't be tracked by the model with an effect system or something of the sort
+          subs      : Subscriptions  
+        }
 
 
 
@@ -138,7 +158,9 @@ module Processor =
             let initialModel = funcs.init ()
             let program =
                 { model = initialModel
-                  funcs = funcs }
+                  states= ModelStates (Map.empty)
+                  funcs = funcs 
+                  subs  = Subscriptions (Map.empty) }
 
             let _ = Agent<'Msg>.Start (modelProcessor program window sync)
             isAlive <- Some mRes
