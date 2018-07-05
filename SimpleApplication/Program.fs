@@ -20,46 +20,69 @@ module MVU =
 
     type Model = 
         { IsClicked : bool 
-          Clicks : int  }
+          Clicks : int 
+          Ticks : int }
 
-    type Msg = MsgUpdate
+    type Msg = 
+        | MsgUpdate
+        | IncrementTick
 
     let init () = 
-        { IsClicked = false 
-          Clicks = 0 }
+        let initModel = 
+            { IsClicked = false 
+              Clicks = 0 
+              Ticks = 0 }
+        initModel,NoEffect
+
 
     let update msg (model:Model) =  
         match msg with 
         | MsgUpdate -> 
-            if model.Clicks > 6 then
-                Error TooManyClicks
-            else
-                Success 
-                    { IsClicked = not model.IsClicked 
-                      Clicks = model.Clicks + 1  }
+            let outcome = 
+                if model.Clicks > 6 then
+                    Error TooManyClicks
+                else
+                    Success 
+                        { model with
+                              IsClicked = not model.IsClicked 
+                              Clicks = model.Clicks + 1 }
+            let command =
+                if model.Clicks = 1 then
+                    let timerTick dispatch =
+                        async{
+                            let timer = new System.Timers.Timer(1000.)
+                            timer.Elapsed.Subscribe (fun _ -> dispatch IncrementTick ) |> ignore
+                            timer.Enabled <- true
+                            timer.Start()
+                        }
+                    AsyncDispatcher timerTick
+                else
+                    NoEffect
+            outcome,command
+        | IncrementTick ->
+            let outcome = Success { model with Ticks = model.Ticks + 1 }
+            outcome,NoEffect
+
 
 
     let viewGridChildren dispatch (model:Model) = 
-        [   if model.IsClicked then                       
-                yield button { ButtonProperties.Default with
-                                    Row = Some 0
-                                    Width = Some 55.
-                                    Height = Some 23.
-                                    VerticalAlignment = Some VerticalAlignment.Top
-                                    Content = Some ("Say Hello!" |> box) }
-                                { ButtonEvents.Default with Click = Some (fun _ -> dispatch MsgUpdate) }   
+        [   
+            yield button { ButtonProperties.Default with
+                                Row = Some 0
+                                Width = Some 55.
+                                Height = Some 23.
+                                VerticalAlignment = Some VerticalAlignment.Top
+                                Content = Some ("Say Hello!" |> box) }
+                            { ButtonEvents.Default with Click = Some (fun _ -> dispatch MsgUpdate) }           
+            yield  textBlock { TextBlockProperties.Default with
+                                Row = Some 1
+                                Text = Some (sprintf "Ticks : %i !" model.Ticks) }
+                                TextBlockEvents.Default   
+            if model.IsClicked then                       
                 yield  textBlock { TextBlockProperties.Default with
-                                    Row = Some 1
+                                    Row = Some 2
                                     Text = Some "Hello WPF!" }
                                     TextBlockEvents.Default   
-            else
-                yield button { ButtonProperties.Default with
-                                    Row = Some 0
-                                    Width = Some 55.
-                                    Height = Some 23.
-                                    VerticalAlignment = Some VerticalAlignment.Top
-                                    Content = Some ("Say Hello!" |> box) }
-                                { ButtonEvents.Default with Click = Some (fun _ -> dispatch MsgUpdate) }                                           
         ]
 
     
@@ -76,7 +99,8 @@ module MVU =
                WindowEvents.Default
                ( grid { GridProperties.Default with 
                             RowDefinitions = 
-                                Some [  {Height=8;Unit=GridUnitType.Star}
+                                Some [  {Height=5;Unit=GridUnitType.Star}
+                                        {Height=3;Unit=GridUnitType.Star}
                                         {Height=3;Unit=GridUnitType.Star}
                                      ] }
                       (viewGridChildren dispatch model) 
@@ -89,6 +113,7 @@ open MVU
 [<EntryPoint>]
 let main argv = 
     
+    //mkMVUSimple init view update
     mkMVUProgram init view update
     |> run
     

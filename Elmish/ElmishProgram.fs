@@ -5,51 +5,43 @@ module ProgramTypes =
     open System.Windows
     open System.Threading
     open VDom.VDomTypes
-    open System.Diagnostics
 
     type Agent<'a> = MailboxProcessor<'a>
-
+    
     type IError =
         abstract member Description : unit -> string
 
-    type Outcome<'a> = 
-        | Success of 'a
+    type UMOutcome<'Model> = 
+        | Success of 'Model 
         | Error of IError
 
     type Dispatch<'Msg> = 'Msg -> unit
 
-    type Init<'Model> = unit -> 'Model
+    type Cmd<'Msg> = 
+        | AsyncDispatcher of (Dispatch<'Msg> -> Async<unit>)
+        | AsyncMsg of Async<'Msg>
+        | NoEffect
+
+    type Init<'Msg,'Model> = unit -> ('Model * Cmd<'Msg>)
+    type SimpleInit<'Model> = unit -> 'Model
+    
+    type Update<'Msg,'Model> = 'Msg -> 'Model -> (UMOutcome<'Model> * Cmd<'Msg>)
+    type SimpleUpdate<'Msg,'Model> = 'Msg -> 'Model -> UMOutcome<'Model>
+    
+    
     type View<'Msg,'Model> = Dispatch<'Msg> -> 'Model -> ViewWindow
-    type Update<'Msg,'Model> = 'Msg -> 'Model -> Outcome<'Model>
+   
 
     type FuncProgram<'Msg,'Model> =
-        { init          : Init<'Model>
+        { init          : Init<'Msg,'Model>
           view          : View<'Msg,'Model>
           update        : Update<'Msg,'Model> 
           errorHandler  : Window -> SynchronizationContext -> IError -> Async<unit>}
 
 
-    type Token = internal Token of int            
-
-    type Subscriptions = Subscriptions of Map<Token,Async<Outcome<unit>>>
-
-    type Time = Time of int
-    type ModelState<'Msg,'Model> = 
-        { Model : 'Model
-          Msg   : 'Msg  }
-           
-            
-    type ModelStates<'Msg,'Model> = ModelStates of Map<Time,ModelState<'Msg,'Model>>
-
     type Program<'Msg,'Model> =
         { model     : 'Model
-          // TODO : FOR FUTURE USE : For tracking the state of the model allowing use to have an undo/redo mechanism for debugging purposes
-          states    : ModelStates<'Msg,'Model>
-          funcs     : FuncProgram<'Msg,'Model> 
-          // TODO : FOR FUTURE USE : For handling Asynchronous flows that could also communicate with the external world 
-          //      : Side-effects should/could only happen here and they can't be tracked by the model with an effect system or something of the sort
-          subs      : Subscriptions  
-        }
+          funcs     : FuncProgram<'Msg,'Model> }
 
 
 
@@ -97,10 +89,38 @@ module Processor =
 
     type Agent<'a> = MailboxProcessor<'a>
 
+    
+    type CommandProcessor<'Msg>(dispatch) =
+
+        let commandProcessor (dispatch: Dispatch<'Msg>) (inbox:Agent<Cmd<'Msg>>) =
+            let rec aux () =
+                async{
+                    let! msg = inbox.Receive()
+                    match msg with
+                    | AsyncDispatcher commandDispatcher -> commandDispatcher dispatch |> Async.Start
+                    | AsyncMsg command -> 
+                        async{
+                            let! msg = command
+                            return dispatch msg
+                        } |> Async.Start
+                    | NoEffect -> ()
+                    return! aux ()
+                }
+
+            aux ()
+        
+        let agent = Agent<Cmd<'Msg>>.Start (commandProcessor dispatch)
+
+        member __.AddCommand (command : Cmd<'Msg>) = agent.Post command
+
+
     type MessageProcessor<'Msg,'Model>(funcs:FuncProgram<'Msg,'Model>) =
         
         let modelProcessor (program:Program<'Msg,'Model>) (window:Window) (sync:SynchronizationContext) (inbox:Agent<'Msg>) =
-            let rec aux (program:Program<'Msg,'Model>) (initial:bool) (oldView:ViewWindow) (window:Window) (sync:SynchronizationContext) (inbox:Agent<'Msg>) =
+
+            let commandProcessor = new CommandProcessor<'Msg>(inbox.Post)
+
+            let rec aux (program:Program<'Msg,'Model>) (initial:bool) (oldView:ViewWindow) (window:Window) (sync:SynchronizationContext) =
                 async{
                     let! oldView =
                         async{
@@ -117,8 +137,8 @@ module Processor =
                         }
                     let! msg = inbox.Receive()
 
-
-                    let UMModel = program.funcs.update msg (program.model)
+                    let UMModel,cmd = program.funcs.update msg (program.model)
+                    commandProcessor.AddCommand cmd
 
                     match UMModel with
                     | Success model ->
@@ -131,7 +151,7 @@ module Processor =
                         updateWindow window updates
                         do! Async.SwitchToThreadPool ()
                 
-                        return! aux program false newView window sync inbox
+                        return! aux program false newView window sync
                     | Error error ->
                         return! program.funcs.errorHandler window sync error
                 }
@@ -149,18 +169,16 @@ module Processor =
                   Properties = VProperties []
                   Events = VEvents [] }
 
-            aux program true stubWindow window sync inbox
+            aux program true stubWindow window sync
         
         let mutable isAlive = None
         do
             let (window,sync,mRes) = launch_window_on_new_thread ()
 
-            let initialModel = funcs.init ()
+            let initialModel,initialSubs = funcs.init ()
             let program =
                 { model = initialModel
-                  states= ModelStates (Map.empty)
-                  funcs = funcs 
-                  subs  = Subscriptions (Map.empty) }
+                  funcs = funcs }
 
             let _ = Agent<'Msg>.Start (modelProcessor program window sync)
             isAlive <- Some mRes
@@ -169,12 +187,10 @@ module Processor =
             isAlive.Value.Wait()
             
 
-
-
 module Program =
     open System.Windows
     open ProgramTypes
-    open Processor
+    open Processor       
 
 
     let mkMVUProgram init view update = 
@@ -194,13 +210,18 @@ module Program =
               errorHandler  = errorHandler }
         funcs 
 
+    let mkMVUSimple (init:SimpleInit<_>) view (update:SimpleUpdate<_,_>) =
+        let newUpdate msg model = 
+            update msg model , NoEffect
+
+        let newInit () =
+            init () , NoEffect
+
+        mkMVUProgram newInit view newUpdate
+
     let withErrorHandler errorHandler (program:FuncProgram<_,_>) = { program with errorHandler = errorHandler }
 
     let run funcs = 
         let msgProcessor = MessageProcessor(funcs)
         msgProcessor.Wait()
         ()
-
-    
-
-
