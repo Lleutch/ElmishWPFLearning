@@ -59,9 +59,9 @@ module VDom =
             | Opacity             of float 
 
         type VProperties = VProperties of (VProperty*int) list  
-  
-
+          
         type VEvent =
+            | NoEvent 
             // Button Related
             | Click         of RoutedEventHandler
             // Text Related
@@ -73,7 +73,7 @@ module VDom =
             | Deactivated   of EventHandler
             | Loaded        of RoutedEventHandler
 
-        type VEvents = VEvents of (VEvent*int) list  
+        type VEvents = VEvents of (VEvent*int) list              // Built from TmpEvents with the use of the dispatcher hidden from the user
 
         type TaggedContainer =
             | Grid
@@ -87,21 +87,36 @@ module VDom =
             | Container of TaggedContainer
             | Control   of TaggedControl
 
-        type NodeElement = 
+        type WPFLambda<'Msg,'args,'handler> = ('args -> 'Msg) * ((obj -> 'args -> unit) -> 'handler)
+
+        type WPFEvent<'Msg> = 
+            // Button Related
+            | WPFClick         of WPFLambda<'Msg,RoutedEventArgs,RoutedEventHandler>
+            // Text Related
+            | WPFTextInput     of WPFLambda<'Msg,TextCompositionEventArgs,TextCompositionEventHandler> 
+            // Window Related
+            | WPFActivated     of WPFLambda<'Msg,EventArgs,EventHandler>
+            | WPFClosed        of WPFLambda<'Msg,EventArgs,EventHandler>
+            | WPFClosing       of WPFLambda<'Msg,CancelEventArgs,CancelEventHandler>
+            | WPFDeactivated   of WPFLambda<'Msg,EventArgs,EventHandler>
+            | WPFLoaded        of WPFLambda<'Msg,RoutedEventArgs,RoutedEventHandler>
+
+        type WPFEvents<'Msg> = WPFEvents of (WPFEvent<'Msg>*int) list    // Temporary, making the events independent of the dispatcher
+
+
+        type WPFNodeElement<'Msg>  = 
             { Tag : Tag
               Properties : VProperties
-              Events : VEvents }
+              Events : VEvents 
+              WPFEvents : WPFEvents<'Msg>   }
 
-        type Tree = Tree of NodeElement * Tree list
+        type WPFTree<'Msg>  = WPFTree of WPFNodeElement<'Msg> * WPFTree<'Msg>  list
 
-        type ViewWindow = 
+        type WPFWindow<'Msg>  = 
             { Properties : VProperties
               Events : VEvents 
-              Tree : Tree }
-       
-
-
-
+              WPFEvents : WPFEvents<'Msg>  
+              Tree : WPFTree<'Msg> }
 
     module VDomExt =
         open System.Windows
@@ -188,6 +203,7 @@ module VDom =
         type VEvent with           
             member x.EventAdd() =     
                 match x with
+                | NoEvent   -> failwith "fail"
                 // Button Related
                 | Click         c ->    ButtonUpdate (fun b -> b.Click.AddHandler c)
                 // Text Related
@@ -201,6 +217,7 @@ module VDom =
 
             member x.EventDispose() =     
                 match x with
+                | NoEvent   -> failwith "fail"
                 // Button Related
                 | Click         c ->    ButtonUpdate (fun b -> b.Click.RemoveHandler c)
                 // Text Related
@@ -250,9 +267,9 @@ module VDom =
         let internal disposeHandlerEvents events (uiElement: UIElement) = handleEvents (fun vevent -> vevent.EventDispose()) events uiElement
 
         
-        let rec private addToUIElement (uiElement : UIElement) (trees : Tree list) =
+        let rec private addToUIElement (uiElement : UIElement) (trees : WPFTree<'Msg> list) =
             for tree in trees do
-                let (Tree (nodeElement,subTrees)) = tree
+                let (WPFTree (nodeElement,subTrees)) = tree
                 let uiElement2 = nodeElement.Tag.Create()
 
                 updateProperties (nodeElement.Properties) uiElement2
@@ -261,9 +278,9 @@ module VDom =
                     (uiElement :?> Panel).Children.Add(uiElement2) |> ignore
                     addToUIElement uiElement2 subTrees
 
-        type Tree with
+        type WPFTree<'Msg> with
             member x.Create() =
-                let (Tree (nodeElement,trees)) = x      
+                let (WPFTree (nodeElement,trees)) = x      
                 let uiElement = nodeElement.Tag.Create()
                 updateProperties (nodeElement.Properties) uiElement 
                 addHandlerEvents (nodeElement.Events) uiElement 
@@ -271,7 +288,7 @@ module VDom =
                 uiElement
 
 
-        type ViewWindow with
+        type WPFWindow<'Msg> with
             member x.Build() =
                 let tree = x.Tree
                 //let (ViewWindow (nodeElement, tree)) = x
@@ -294,7 +311,7 @@ module VDom =
                         | WindowUpdate              windowUp        -> windowUp window
                         | _                                         -> failwith "Code mistake"
                        )
-                let (Tree (nodeElement,trees)) = tree
+                let (WPFTree (nodeElement,trees)) = tree
                 let uiElement = nodeElement.Tag.Create()
 
                 updateProperties (nodeElement.Properties) uiElement
@@ -303,6 +320,58 @@ module VDom =
                 window.Content <- uiElement
                 addToUIElement uiElement trees
                 window
+
+
+               
+
+        type WPFEvent<'Msg> with
+            member x.VirtualConvert(dispatch) : VEvent =
+                let buildHandler getMsg handlerLambda =
+                    ( fun _ args -> 
+                        let msg = getMsg args
+                        dispatch msg )
+                    |> handlerLambda
+                match x with
+                // Button Related
+                | WPFClick         (getMsg,handlerLambda) -> buildHandler getMsg handlerLambda |> Click
+                // Text Related
+                | WPFTextInput     (getMsg,handlerLambda) -> buildHandler getMsg handlerLambda |> TextInput
+                // Window Related
+                | WPFActivated     (getMsg,handlerLambda) -> buildHandler getMsg handlerLambda |> Activated
+                | WPFClosed        (getMsg,handlerLambda) -> buildHandler getMsg handlerLambda |> Closed
+                | WPFClosing       (getMsg,handlerLambda) -> buildHandler getMsg handlerLambda |> Closing
+                | WPFDeactivated   (getMsg,handlerLambda) -> buildHandler getMsg handlerLambda |> Deactivated
+                | WPFLoaded        (getMsg,handlerLambda) -> buildHandler getMsg handlerLambda |> Loaded
+
+        type WPFEvents<'Msg> with 
+            member x.VirtualConvert(dispatch) : VEvents =
+                let (WPFEvents wpfEventList) = x
+                wpfEventList 
+                |> List.map(fun (wpfEvent,index) -> (wpfEvent.VirtualConvert(dispatch),index))
+                |> VEvents
+
+        type WPFNodeElement<'Msg> with
+            member x.VirtualConvert(dispatch) : WPFNodeElement<'Msg> =
+                { x with Events = x.WPFEvents.VirtualConvert(dispatch) }
+
+        type WPFTree<'Msg> with
+            member x.VirtualConvert(dispatch) : WPFTree<'Msg> =
+                let rec aux (wpfTree:WPFTree<'Msg>) =
+                    let (WPFTree (wpfNodeElement,wpfTrees)) = wpfTree
+                    let vNodeElement = wpfNodeElement.VirtualConvert(dispatch)
+                    let vTrees = 
+                        match wpfTrees with 
+                        | [] -> []
+                        | _  -> wpfTrees |> List.map(fun wpfTree -> aux wpfTree )
+                    WPFTree (vNodeElement,vTrees)    
+                aux x
+         
+
+        type WPFWindow<'Msg> with
+            member x.VirtualConvert(dispatch) : WPFWindow<'Msg> =            
+                { x with 
+                      Events = x.WPFEvents.VirtualConvert(dispatch)  
+                      Tree = x.Tree.VirtualConvert(dispatch) }
 
 
 
@@ -332,11 +401,11 @@ module VDom =
         type AddEvents      = AddEvents of VEvents
         type RemoveEvents   = RemoveEvents of VEvents
 
-        type Update =
+        type Update<'Msg> =
             | UpEvents      of NodeLoc * RemoveEvents * AddEvents
             | UpProperties  of NodeLoc * VProperties
-            | UpNode        of NodeLoc * Tree
-            | AddNode       of NodeLoc * Tree
+            | UpNode        of NodeLoc * WPFTree<'Msg>
+            | AddNode       of NodeLoc * WPFTree<'Msg>
             | RemoveNode    of NodeLoc 
 
 
@@ -390,61 +459,59 @@ module VDom =
             | []        -> UpProperties (nodeLoc, VProperties [])
             | vprops    -> UpProperties (nodeLoc, VProperties vprops)                
 
-        let treeDiff (windowOld:ViewWindow) (windowNew:ViewWindow) =
-            let rec aux (Tree (nodeOld,subsOld)) (Tree (nodeNew,subsNew)) (NodeLoc nodeLoc) =
+
+        let treeDiff (windowOld:WPFWindow<'Msg>) (windowNew:WPFWindow<'Msg>) =
+            let nodeDiffs (nodeOld:WPFNodeElement<'Msg>) (nodeNew:WPFNodeElement<'Msg>) (NodeLoc nodeLoc) : (Update<'Msg> * Update<'Msg>) option =
                 if nodeOld.Tag = nodeNew.Tag then
                     let upProps  = propertiesDifferences (nodeOld.Properties) (nodeNew.Properties) (NodeLoc nodeLoc)
                     let upEvents = eventsDifferences (nodeOld.Events) (nodeNew.Events) (NodeLoc nodeLoc)
-                    let updates = 
-                        match subsOld,subsNew with
-                        | [] , [] -> []
-                        | [] , _ -> 
-                            let updates = 
-                                subsNew
-                                |> List.mapi(fun index sub -> 
-                                    let revList = List.rev nodeLoc
-                                    let nodeLoc = index::revList |> List.rev
-                                    AddNode ((NodeLoc nodeLoc),sub) 
-                                   )
-                            updates
-                        | _ , [] ->
-                            let updates = 
-                                subsNew
-                                |> List.mapi(fun index _ -> 
-                                    let revList = List.rev nodeLoc
-                                    let nodeLoc = index::revList |> List.rev
-                                    RemoveNode (NodeLoc nodeLoc) 
-                                   )
-                                |> List.rev
-                            updates
-                        | _ , _ ->
-                            let rec aux2 (subsOld : Tree list) (subsNew : Tree list) (updates:Update list) (removeNodes : Update list) (revList:int list) (index:int) =
-                                match subsOld,subsNew with
-                                | [],[] -> (updates |> List.rev)@removeNodes
-                                | _::tlOld , [] -> 
-                                    let nodeLoc = index::revList |> List.rev
-                                    let removeNode = RemoveNode (NodeLoc nodeLoc) 
-                                    let res = aux2 tlOld [] updates (removeNode::removeNodes) revList (index + 1)
-                                    res
-                                | [] , hdNew::tlNew ->
-                                    let nodeLoc = index::revList |> List.rev
-                                    let update = AddNode (NodeLoc nodeLoc,hdNew) 
-                                    aux2 [] tlNew (update::updates) removeNodes revList (index + 1)
-                                | hdOld::tlOld , hdNew::tlNew ->
-                                    let nodeLoc = index::revList |> List.rev
-                                    let newUpdates = aux hdOld hdNew (NodeLoc nodeLoc) 
-                                    aux2 tlOld tlNew (newUpdates@updates) removeNodes revList (index + 1)
-                            let revList = List.rev nodeLoc
-                            let res = aux2 subsOld subsNew [] [] revList 0
-                            res
-                    upEvents::upProps::updates
-                else
-                    [UpNode (NodeLoc nodeLoc,(Tree (nodeNew,subsNew)))]
+                    Some (upEvents,upProps)
+                else 
+                    None
+            
+            
+            let rec aux (oldTrees:WPFTree<'Msg> list) (newTrees:WPFTree<'Msg> list) (NodeLoc revList) (lineLoc:int) (updates: Update<'Msg> list) =
+                match oldTrees,newTrees with
+                | [] , []   -> updates
+                | [] , _    -> 
+                    let ups = 
+                        newTrees
+                        |> List.mapi(fun index sub -> 
+                            let nodeLoc = (lineLoc + index)::revList |> List.rev
+                            AddNode ((NodeLoc nodeLoc),sub) 
+                            )
+                        |> List.rev
+                    ups@updates                    
+                | _ , []    -> 
+                    let ups = 
+                        oldTrees
+                        |> List.mapi(fun index _ -> 
+                            let nodeLoc = (lineLoc + index)::revList |> List.rev
+                            RemoveNode (NodeLoc nodeLoc) 
+                            )
+                    ups@updates                
+                | hdOld::tlOld , hdNew::tlNew   ->
+                    let nl = 
+                        let nl = (lineLoc::revList) |> List.rev
+                        nl 
+                    let (WPFTree (oldNode,oldTrees)) = hdOld
+                    let (WPFTree (newNode,newTrees)) = hdNew
+                    let diff = nodeDiffs oldNode newNode (NodeLoc nl)
+                    let ups = 
+                        match diff with
+                        | None -> aux oldTrees newTrees (NodeLoc (List.rev nl)) 0 updates
+                        | Some (upEvents,upProps) -> aux oldTrees newTrees (NodeLoc (List.rev nl)) 0 (upEvents::upProps::updates)
+                    aux tlOld tlNew (NodeLoc revList) (lineLoc + 1) ups
 
-            let updateProperties = propertiesDifferences (windowOld.Properties) (windowNew.Properties) (NodeLoc [])
-            let updateEvents     = eventsDifferences (windowOld.Events) (windowNew.Events) (NodeLoc [])
-            let updates = aux (windowOld.Tree) (windowNew.Tree) (NodeLoc [0])
-            updateEvents::updateProperties::updates
+            let upProps  = propertiesDifferences (windowOld.Properties) (windowNew.Properties) (NodeLoc [])
+            let upEvents = eventsDifferences (windowOld.Events) (windowNew.Events) (NodeLoc [])
+
+            let updates = aux [windowOld.Tree] [windowNew.Tree] (NodeLoc []) 0 []
+
+            upEvents::upProps::(List.rev updates)
+
+
+
 
         let private getUIElement (window:Window) (nodeLoc:int list) = 
             let rec aux (uiElement:UIElement) (nodeLoc:int list) =
@@ -458,8 +525,8 @@ module VDom =
             | [] -> window :> UIElement
             | _  -> aux (window.Content :?> UIElement) nodeLoc.Tail
 
-        let updateWindow (window:Window) (updates : Update list) = 
-            let rec aux (updates : Update list) =
+        let updateWindow (window:Window) (updates : Update<'Msg> list) = 
+            let rec aux (updates : Update<'Msg> list) =
                 match updates with
                 | [] -> ()
                 | update::tl ->
@@ -490,4 +557,3 @@ module VDom =
                 
                     aux tl
             aux updates
-

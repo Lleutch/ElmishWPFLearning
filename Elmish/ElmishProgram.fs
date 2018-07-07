@@ -29,7 +29,7 @@ module ProgramTypes =
     type SimpleUpdate<'Msg,'Model> = 'Msg -> 'Model -> UMOutcome<'Model>
     
     
-    type View<'Msg,'Model> = Dispatch<'Msg> -> 'Model -> ViewWindow
+    type View<'Msg,'Model> = 'Model -> WPFWindow<'Msg>
    
 
     type FuncProgram<'Msg,'Model> =
@@ -85,7 +85,9 @@ module Processor =
     open System.Threading
     open UIThread
     open VDom.VDomTypes
+    open VDom.VDomExt
     open VDom.VDom
+
 
     type Agent<'a> = MailboxProcessor<'a>
 
@@ -120,12 +122,13 @@ module Processor =
 
             let commandProcessor = new CommandProcessor<'Msg>(inbox.Post)
 
-            let rec aux (program:Program<'Msg,'Model>) (initial:bool) (oldView:ViewWindow) (window:Window) (sync:SynchronizationContext) =
+            let rec aux (program:Program<'Msg,'Model>) (initial:bool) (oldView:WPFWindow<'Msg>) (window:Window) (sync:SynchronizationContext) =
                 async{
                     let! oldView =
                         async{
                             if initial then
-                                let newWindow = program.funcs.view (inbox.Post) (program.model)
+                                let wpfWindow = program.funcs.view (program.model)
+                                let newWindow = wpfWindow.VirtualConvert(inbox.Post)
                                 let updates = treeDiff oldView newWindow
 
                                 do! Async.SwitchToContext sync
@@ -144,12 +147,29 @@ module Processor =
                     | Success model ->
                         let program = { program with model = model }
 
-                        let newView = program.funcs.view (inbox.Post) (program.model)
+                        printfn "\n===================\n" 
+
+                        let sw = System.Diagnostics.Stopwatch()
+                        sw.Start()
+
+                        let wpfWindow = program.funcs.view (program.model)
+                        printfn "View: %A" (sw.Elapsed) 
+                        sw.Restart()
+
+                        let newView = wpfWindow.VirtualConvert(inbox.Post)
+                        printfn "VirtualConvert: %A" (sw.Elapsed) 
+                        sw.Restart()
+
                         let updates = treeDiff oldView newView
+                        printfn "treeDiff: %A" (sw.Elapsed) 
+                        sw.Restart()
 
                         do! Async.SwitchToContext sync
                         updateWindow window updates
                         do! Async.SwitchToThreadPool ()
+
+                        printfn "updateWindow: %A" (sw.Elapsed) 
+                        sw.Restart()
                 
                         return! aux program false newView window sync
                     | Error error ->
@@ -157,17 +177,19 @@ module Processor =
                 }
 
 
-            let stubWindow =
+            let stubWindow : WPFWindow<'Msg> =
 
-                let nodeElementGrid = 
+                let nodeElementGrid : WPFNodeElement<'Msg> = 
                     { Tag = Tag.Container Grid
                       Properties = VProperties []
-                      Events = VEvents [] }
+                      Events = VEvents [] 
+                      WPFEvents = WPFEvents [] }
                 
-                let tree = Tree (nodeElementGrid,[])
+                let tree = WPFTree (nodeElementGrid,[])
                 { Tree = tree
                   Properties = VProperties []
-                  Events = VEvents [] }
+                  Events = VEvents [] 
+                  WPFEvents = WPFEvents [] }
 
             aux program true stubWindow window sync
         

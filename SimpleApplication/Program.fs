@@ -3,12 +3,10 @@
 open System
 open System.Windows
 open Elmish.DSL.DSL
-open Elmish.DSL.DSLDomain
 open Elmish.ProgramTypes
 open Elmish.Program
 
 module MVU =
-    open System.Windows.Controls
 
     type ModelError =
         | TooManyClicks
@@ -34,12 +32,13 @@ module MVU =
               Ticks = 0 }
         initModel,NoEffect
 
+            
 
     let update msg (model:Model) =  
         match msg with 
         | MsgUpdate -> 
             let outcome = 
-                if model.Clicks > 6 then
+                if false && model.Clicks > 6 then
                     Error TooManyClicks
                 else
                     Success 
@@ -47,7 +46,7 @@ module MVU =
                               IsClicked = not model.IsClicked 
                               Clicks = model.Clicks + 1 }
             let command =
-                if model.Clicks = 1 then
+                if model.Clicks = 100 then
                     let timerTick dispatch =
                         async{
                             let timer = new System.Timers.Timer(1000.)
@@ -65,46 +64,32 @@ module MVU =
 
 
 
-    let viewGridChildren dispatch (model:Model) = 
-        [   
-            yield button { ButtonProperties.Default with
-                                Row = Some 0
-                                Width = Some 55.
-                                Height = Some 23.
-                                VerticalAlignment = Some VerticalAlignment.Top
-                                Content = Some ("Say Hello!" |> box) }
-                            { ButtonEvents.Default with Click = Some (fun _ -> dispatch MsgUpdate) }           
-            yield  textBlock { TextBlockProperties.Default with
-                                Row = Some 1
-                                Text = Some (sprintf "Ticks : %i !" model.Ticks) }
-                                TextBlockEvents.Default   
+    let viewGridChildren (model:Model) = 
+        let res = [ for i in 1..10000 -> WPF.textBlock(Row = 2, Text = "Hello WPF!") ]
+
+        [   yield WPF.button( Row = 0, 
+                              Width = 55., 
+                              Height = 23., 
+                              VerticalAlignment = VerticalAlignment.Top,
+                              Content = ("Say Hello!" |> box), 
+                              Click = fun _ -> MsgUpdate    ) 
+                              
+            yield WPF.textBlock( Row = 1 , Text = (sprintf "Ticks : %i !" model.Ticks) )
+
             if model.IsClicked then                       
-                yield  textBlock { TextBlockProperties.Default with
-                                    Row = Some 2
-                                    Text = Some "Hello WPF!" }
-                                    TextBlockEvents.Default   
+                yield! res
         ]
 
     
-    let view dispatch (model:Model) =
-        let row0 = new RowDefinition()
-        row0.Height <- new GridLength(8.,GridUnitType.Star)
-        let row1 = new RowDefinition()
-        row1.Height <- new GridLength(3.,GridUnitType.Star)
-        
-
-        window { WindowProperties.Default with 
-                    Width = Some 500. 
-                    Height = Some 300. }
-               WindowEvents.Default
-               ( grid { GridProperties.Default with 
-                            RowDefinitions = 
-                                Some [  {Height=5;Unit=GridUnitType.Star}
-                                        {Height=3;Unit=GridUnitType.Star}
-                                        {Height=3;Unit=GridUnitType.Star}
-                                     ] }
-                      (viewGridChildren dispatch model) 
-               )        
+    let view (model:Model) =
+        WPF.window( WPF.grid( RowDefinitions = 
+                                [  {Height=5;Unit=GridUnitType.Star}
+                                   {Height=3;Unit=GridUnitType.Star}
+                                   {Height=3;Unit=GridUnitType.Star}  ],
+                              
+                              Children = viewGridChildren model ),
+                    Width = 500., 
+                    Height = 300. )                
 
 
 open MVU
