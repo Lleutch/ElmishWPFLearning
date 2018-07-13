@@ -65,14 +65,22 @@ module MVU =
 
 
     let viewGridChildren (model:Model) = 
-        let res = [ for i in 1..10000 -> WPF.textBlock(Row = 2, Text = "Hello WPF!") ]
+        let res = [ for i in 1..2 -> WPF.textBlock(Row = 2, Text = "Hello WPF!") ]
 
-        [   yield WPF.button( Row = 0, 
-                              Width = 55., 
-                              Height = 23., 
-                              VerticalAlignment = VerticalAlignment.Top,
-                              Content = ("Say Hello!" |> box), 
-                              Click = fun _ -> MsgUpdate    ) 
+        [   
+            
+            if model.IsClicked then 
+                yield WPF.button( Row = 0, 
+                                  Width = 110., 
+                                  Height = 46., 
+                                  VerticalAlignment = VerticalAlignment.Top,
+                                  Content = ("Say Hello!" |> box), 
+                                  Click = fun _ -> MsgUpdate    ) 
+            else
+                yield WPF.button( Row = 0, 
+                                  VerticalAlignment = VerticalAlignment.Top,
+                                  Content = ("Say Hello!" |> box), 
+                                  Click = fun _ -> MsgUpdate    ) 
                               
             yield WPF.textBlock( Row = 1 , Text = (sprintf "Ticks : %i !" model.Ticks) )
 

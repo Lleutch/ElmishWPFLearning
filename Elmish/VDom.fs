@@ -54,9 +54,17 @@ module VDom =
             | BorderThickness     of Thickness 
             | Foreground          of Brush 
             // Visibily related
-            | IsEnabled           of bool 
             | Visibility          of Visibility 
             | Opacity             of float 
+            // Element state related
+            | IsEnabled           of bool 
+            | IsThreeState        of bool 
+            | IsChecked           of bool 
+            // Progress related
+            | IsIndeterminate     of bool                      
+            | Value               of float         
+            | Minimum             of float           
+            | Maximum             of float           
 
         type VProperties = VProperties of (VProperty*int) list  
           
@@ -72,6 +80,11 @@ module VDom =
             | Closing       of CancelEventHandler
             | Deactivated   of EventHandler
             | Loaded        of RoutedEventHandler
+            // CheckBox Related
+            | Checked       of RoutedEventHandler
+            | Unchecked     of RoutedEventHandler
+            | Indeterminate of RoutedEventHandler
+
 
         type VEvents = VEvents of (VEvent*int) list              // Built from TmpEvents with the use of the dispatcher hidden from the user
 
@@ -82,6 +95,13 @@ module VDom =
         type TaggedControl  =
             | Button 
             | TextBlock
+            | CheckBox
+            | ProgressBar
+            | TextBox 
+
+            //| Slider
+            //| RadioButton
+
  
         type Tag =
             | Container of TaggedContainer
@@ -91,15 +111,21 @@ module VDom =
 
         type WPFEvent<'Msg> = 
             // Button Related
-            | WPFClick         of WPFLambda<'Msg,RoutedEventArgs,RoutedEventHandler>
+            | WPFClick          of WPFLambda<'Msg,RoutedEventArgs,RoutedEventHandler>
             // Text Related
-            | WPFTextInput     of WPFLambda<'Msg,TextCompositionEventArgs,TextCompositionEventHandler> 
+            | WPFTextInput      of WPFLambda<'Msg,TextCompositionEventArgs,TextCompositionEventHandler> 
             // Window Related
-            | WPFActivated     of WPFLambda<'Msg,EventArgs,EventHandler>
-            | WPFClosed        of WPFLambda<'Msg,EventArgs,EventHandler>
-            | WPFClosing       of WPFLambda<'Msg,CancelEventArgs,CancelEventHandler>
-            | WPFDeactivated   of WPFLambda<'Msg,EventArgs,EventHandler>
-            | WPFLoaded        of WPFLambda<'Msg,RoutedEventArgs,RoutedEventHandler>
+            | WPFActivated      of WPFLambda<'Msg,EventArgs,EventHandler>
+            | WPFClosed         of WPFLambda<'Msg,EventArgs,EventHandler>
+            | WPFClosing        of WPFLambda<'Msg,CancelEventArgs,CancelEventHandler>
+            | WPFDeactivated    of WPFLambda<'Msg,EventArgs,EventHandler>
+            | WPFLoaded         of WPFLambda<'Msg,RoutedEventArgs,RoutedEventHandler>
+            // CheckBox Related
+            | WPFChecked        of WPFLambda<'Msg,RoutedEventArgs,RoutedEventHandler>
+            | WPFUnchecked      of WPFLambda<'Msg,RoutedEventArgs,RoutedEventHandler>
+            | WPFIndeterminate  of WPFLambda<'Msg,RoutedEventArgs,RoutedEventHandler>
+            //// ComboBox Related
+            //| WPFSelectionChanged of WPFLambda<'Msg,SelectionChangedEventArgs,SelectionChangedEventHandler>
 
         type WPFEvents<'Msg> = WPFEvents of (WPFEvent<'Msg>*int) list    // Temporary, making the events independent of the dispatcher
 
@@ -118,13 +144,131 @@ module VDom =
               WPFEvents : WPFEvents<'Msg>  
               Tree : WPFTree<'Msg> }
 
+
+    module VDomDefaultValues =
+        open System
+        open System.Windows
+        open System.Windows.Media
+        open VDomTypes
+
+        // TODO : Specify/Document default values
+
+        (*** General ***)
+        // This is not necessarily applicable to all controls/ UIElement
+        // however it is applicable to at least 2 differents elements.
+        // The default value taken by WPF framework might not be the default value applied by this DSL
+        let internal background          = null 
+        let internal column              = 0
+        let internal columnSpan          = 1
+        let internal foreground          = Brushes.Black
+        let internal fontFamily          = Media.FontFamily("Segoe UI")
+        let internal fontSize            = 12.0 
+        let internal fontWeight          = FontWeights.Normal
+        let internal height              = nan 
+        let internal horizontalAlignment = HorizontalAlignment.Stretch 
+        let internal isEnabled           = true
+        let internal margin              = new Thickness(0.,0.,0.,0.)
+        let internal opacity             = 1.0 
+        let internal padding             = new Thickness(0.,0.,0.,0.)
+        let internal row                 = 0
+        let internal rowSpan             = 1
+        let internal verticalAlignment   = VerticalAlignment.Stretch
+        let internal visibility          = Visibility.Visible 
+        let internal width               = nan 
+              
+        (*** Button ***)
+        let internal button_Content              = null 
+        let internal button_BorderBrush          = null 
+        let internal button_BorderThickness      = new Thickness(0.,0.,0.,0.)
+
+        (*** TextBlock ***)
+        let internal textBlock_text            = "" 
+        let internal textBlock_textAlignment   = TextAlignment.Left
+        let internal textBlock_textWrapping    = TextWrapping.NoWrap
+
+        (*** CheckBox ***)
+        let internal checkBox_IsChecked     = false 
+        let internal checkBox_IsThreeState  = false 
+
+        (*** ProgressBar ***)
+        let internal progressBar_IsIndeterminate    = false 
+        let internal progressBar_Value              = 0.0 
+        let internal progressBar_Minimum            = 0.0 
+        let internal progressBar_Maximum            = 100.0 
+  
+        
+        (*** Grid ***)
+        let internal grid_ColumnDefinitions  = []
+        let internal grid_RowDefinitions     = []
+
+        (*** StackPanel ***)
+
+
+        (*** Window ***)
+        let internal window_AllowsTransparency   = false 
+        let internal window_Title                = ""
+        let internal window_WindowStyle          = WindowStyle.SingleBorderWindow 
+        let internal window_WindowState          = WindowState.Normal
+        let internal window_ResizeMode           = ResizeMode.CanResize 
+        //let window_Visibility           = Visibility.Collapsed 
+
+
+        let getVpropertyDefaultValue (vProp : VProperty) =
+            match vProp with
+            // Window Related
+            | WindowStyle         _ ->  WindowStyle         window_WindowStyle 
+            | WindowState         _ ->  WindowState         window_WindowState
+            | Title               _ ->  Title               window_Title
+            | ResizeMode          _ ->  ResizeMode          window_ResizeMode
+            | AllowsTransparency  _ ->  AllowsTransparency  window_AllowsTransparency
+            // Layout Related          
+            | ColumnDefinitions   _ ->  ColumnDefinitions   grid_ColumnDefinitions
+            | RowDefinitions      _ ->  RowDefinitions      grid_RowDefinitions
+            | Column              _ ->  Column              column
+            | ColumnSpan          _ ->  ColumnSpan          columnSpan
+            | Row                 _ ->  Row                 row
+            | RowSpan             _ ->  RowSpan             rowSpan
+            | Width               _ ->  Width               width
+            | Height              _ ->  Height              height 
+            | Padding             _ ->  Padding             padding
+            | Margin              _ ->  Margin              margin
+            | HorizontalAlignment _ ->  HorizontalAlignment horizontalAlignment
+            | VerticalAlignment   _ ->  VerticalAlignment   verticalAlignment
+            // Text Related            
+            | Content             _ ->  Content             button_Content
+            | Text                _ ->  Text                textBlock_text
+            | TextAlignment       _ ->  TextAlignment       textBlock_textAlignment
+            | TextWrapping        _ ->  TextWrapping        textBlock_textWrapping
+            | FontFamily          _ ->  FontFamily          fontFamily
+            | FontSize            _ ->  FontSize            fontSize
+            | FontWeight          _ ->  FontWeight          fontWeight
+            // Styling                 
+            | Background          _ ->  Background          background
+            | BorderBrush         _ ->  BorderBrush         button_BorderBrush
+            | BorderThickness     _ ->  BorderThickness     button_BorderThickness
+            | Foreground          _ ->  Foreground          foreground
+            // Visibily related        
+            | Visibility          _ ->  Visibility          visibility
+            | Opacity             _ ->  Opacity             opacity
+            // Element state related
+            | IsEnabled           _ ->  IsEnabled           isEnabled
+            | IsThreeState        _ ->  IsThreeState        checkBox_IsThreeState
+            | IsChecked           _ ->  IsChecked           checkBox_IsChecked
+            // Progress related
+            | IsIndeterminate     _ ->  IsIndeterminate     progressBar_IsIndeterminate
+            | Value               _ ->  Value               progressBar_Value
+            | Minimum             _ ->  Minimum             progressBar_Minimum
+            | Maximum             _ ->  Maximum             progressBar_Maximum
+
+
+
+
     module VDomExt =
         open System.Windows
         open System.Windows.Controls
         open VDomTypes
-
-
-
+        open System
+        open System.Windows.Controls.Primitives
 
         type ColDef with
             member x.Convert() = 
@@ -143,11 +287,15 @@ module VDom =
         type WPFObjectUpdate =
             | ButtonUpdate              of (Button -> unit)
             | TextBlockUpdate           of (TextBlock -> unit)
+            | CheckBoxUpdate            of (CheckBox -> unit)
             | GridUpdate                of (Grid -> unit)
             | WindowUpdate              of (Window -> unit)
             | UIElementUpdate           of (UIElement -> unit)
             | FrameworkElementUpdate    of (FrameworkElement -> unit)
             | ControlUpdate             of (Control -> unit)
+            | RangeBaseUpdate           of (RangeBase -> unit)
+            | ProgressBarUpdate         of (ProgressBar -> unit)
+
 
         
         type Tag with
@@ -157,6 +305,10 @@ module VDom =
                 | Container StackPanel  -> new VirtualizingStackPanel() :> UIElement
                 | Control   Button      -> new Button()     :> UIElement
                 | Control   TextBlock   -> new TextBlock()  :> UIElement
+                | Control   CheckBox    -> new CheckBox()   :> UIElement
+                | Control   ProgressBar -> new ProgressBar()    :> UIElement
+                | Control   TextBox     -> new TextBox()    :> UIElement
+
 
         // TODO : Define something cleaner as currently it is not ok yet
         type VProperty with
@@ -171,9 +323,9 @@ module VDom =
                     // Layout Related
                     | ColumnDefinitions   cd    -> GridUpdate (fun gr -> cd |> List.iter(fun c -> gr.ColumnDefinitions.Add(c.Convert())) ) 
                     | RowDefinitions      rd    -> GridUpdate (fun gr -> rd |> List.iter(fun r -> gr.RowDefinitions.Add(r.Convert())) ) 
-                    | Column              c     -> UIElementUpdate (fun ui -> Grid.SetColumn(ui,c)) 
-                    | ColumnSpan          cs    -> UIElementUpdate (fun ui -> Grid.SetColumnSpan(ui,cs)) 
-                    | Row                 r     -> UIElementUpdate (fun ui -> Grid.SetRow(ui,r)) 
+                    | Column              c     -> UIElementUpdate (fun ui -> Grid.SetColumn(ui,c))
+                    | ColumnSpan          cs    -> UIElementUpdate (fun ui -> Grid.SetColumnSpan(ui,cs))
+                    | Row                 r     -> UIElementUpdate (fun ui -> Grid.SetRow(ui,r))
                     | RowSpan             rs    -> UIElementUpdate (fun ui -> Grid.SetRowSpan(ui,rs)) 
                     | Width               w     -> FrameworkElementUpdate (fun fw -> fw.Width <- w) 
                     | Height              h     -> FrameworkElementUpdate (fun fw -> fw.Height <- h) 
@@ -195,9 +347,17 @@ module VDom =
                     | BorderThickness     bt    -> ControlUpdate (fun c -> c.BorderThickness <- bt) 
                     | Foreground          f     -> ControlUpdate (fun c -> c.Foreground <- f) 
                     // Visibily related
-                    | IsEnabled           ie    -> UIElementUpdate (fun ui -> ui.IsEnabled <- ie) 
                     | Visibility          v     -> UIElementUpdate (fun ui -> ui.Visibility <- v)
                     | Opacity             o     -> UIElementUpdate (fun ui -> ui.Opacity <- o)
+                    // Element state related
+                    | IsEnabled           ie    -> UIElementUpdate (fun ui -> ui.IsEnabled <- ie) 
+                    | IsThreeState        its   -> CheckBoxUpdate  (fun ui -> ui.IsThreeState <- its)
+                    | IsChecked           ic    -> CheckBoxUpdate  (fun ui -> ui.IsChecked <- Nullable(ic))
+                    // Progress related
+                    | Value               v     -> RangeBaseUpdate ( fun rb -> rb.Value <- v )
+                    | Minimum             m     -> RangeBaseUpdate ( fun rb -> rb.Minimum <- m )
+                    | Maximum             m     -> RangeBaseUpdate ( fun rb -> rb.Maximum <- m )
+                    | IsIndeterminate     ii    -> ProgressBarUpdate ( fun pb -> pb.IsIndeterminate <- ii )
 
 
         type VEvent with           
@@ -214,6 +374,10 @@ module VDom =
                 | Closing       c ->    WindowUpdate (fun w -> w.Closing.AddHandler c) 
                 | Deactivated   d ->    WindowUpdate (fun w -> w.Deactivated.AddHandler d) 
                 | Loaded        l ->    WindowUpdate (fun w -> w.Loaded.AddHandler l) 
+                // CheckBox Related
+                | Checked       c ->    CheckBoxUpdate (fun cb -> cb.Checked.AddHandler c )
+                | Unchecked     u ->    CheckBoxUpdate (fun cb -> cb.Unchecked.AddHandler u )
+                | Indeterminate i ->    CheckBoxUpdate (fun cb -> cb.Indeterminate.AddHandler i )
 
             member x.EventDispose() =     
                 match x with
@@ -228,6 +392,11 @@ module VDom =
                 | Closing       c ->    WindowUpdate (fun w -> w.Closing.RemoveHandler c) 
                 | Deactivated   d ->    WindowUpdate (fun w -> w.Deactivated.RemoveHandler d) 
                 | Loaded        l ->    WindowUpdate (fun w -> w.Loaded.RemoveHandler l) 
+                // CheckBox Related
+                | Checked       c ->    CheckBoxUpdate (fun cb -> cb.Checked.RemoveHandler c )
+                | Unchecked     u ->    CheckBoxUpdate (fun cb -> cb.Unchecked.RemoveHandler u )
+                | Indeterminate i ->    CheckBoxUpdate (fun cb -> cb.Indeterminate.RemoveHandler i )
+
 
 
         
@@ -333,15 +502,19 @@ module VDom =
                     |> handlerLambda
                 match x with
                 // Button Related
-                | WPFClick         (getMsg,handlerLambda) -> buildHandler getMsg handlerLambda |> Click
-                // Text Related
-                | WPFTextInput     (getMsg,handlerLambda) -> buildHandler getMsg handlerLambda |> TextInput
-                // Window Related
-                | WPFActivated     (getMsg,handlerLambda) -> buildHandler getMsg handlerLambda |> Activated
-                | WPFClosed        (getMsg,handlerLambda) -> buildHandler getMsg handlerLambda |> Closed
-                | WPFClosing       (getMsg,handlerLambda) -> buildHandler getMsg handlerLambda |> Closing
-                | WPFDeactivated   (getMsg,handlerLambda) -> buildHandler getMsg handlerLambda |> Deactivated
-                | WPFLoaded        (getMsg,handlerLambda) -> buildHandler getMsg handlerLambda |> Loaded
+                | WPFClick         (getMsg,handlerLambda)    -> buildHandler getMsg handlerLambda |> Click
+                // Text Related                              
+                | WPFTextInput     (getMsg,handlerLambda)    -> buildHandler getMsg handlerLambda |> TextInput
+                // Window Related                            
+                | WPFActivated     (getMsg,handlerLambda)    -> buildHandler getMsg handlerLambda |> Activated
+                | WPFClosed        (getMsg,handlerLambda)    -> buildHandler getMsg handlerLambda |> Closed
+                | WPFClosing       (getMsg,handlerLambda)    -> buildHandler getMsg handlerLambda |> Closing
+                | WPFDeactivated   (getMsg,handlerLambda)    -> buildHandler getMsg handlerLambda |> Deactivated
+                | WPFLoaded        (getMsg,handlerLambda)    -> buildHandler getMsg handlerLambda |> Loaded
+                // CheckBox Related                          
+                | WPFChecked       (getMsg,handlerLambda)    -> buildHandler getMsg handlerLambda |> Checked
+                | WPFUnchecked     (getMsg,handlerLambda)    -> buildHandler getMsg handlerLambda |> Unchecked 
+                | WPFIndeterminate (getMsg,handlerLambda)    -> buildHandler getMsg handlerLambda |> Indeterminate 
 
         type WPFEvents<'Msg> with 
             member x.VirtualConvert(dispatch) : VEvents =
@@ -442,7 +615,7 @@ module VDom =
                 match propOld,propNew with
                 | (hdOld,indOld)::tlOld , (hdNew,indNew)::tlNew ->
                     if indOld > indNew then
-                        aux tlOld propNew ((hdOld,indOld)::updates)
+                        aux tlOld propNew ((VDomDefaultValues.getVpropertyDefaultValue hdOld,indOld)::updates)
                     elif indOld < indNew then
                         aux propOld tlNew ((hdNew,indNew)::updates)
                     else
@@ -452,7 +625,7 @@ module VDom =
                             aux tlOld tlNew ((hdNew,indNew)::updates)
             
                 | [] , (hd,ind)::tl -> aux [] tl ((hd,ind)::updates)
-                | (hd,ind)::tl , [] -> aux tl [] ((hd,ind)::updates)
+                | (hd,ind)::tl , [] -> aux tl [] ((VDomDefaultValues.getVpropertyDefaultValue hd,ind)::updates)
                 | [] , [] -> updates
         
             match (aux propOld propNew []) with

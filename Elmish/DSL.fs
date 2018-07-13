@@ -22,34 +22,14 @@ module DSL =
 
 
     module DSL =
+        open System
+        open System.Windows
+        open System.Windows.Media
+        open System.Windows.Input
+        open System.Windows.Controls
+        open System.ComponentModel
         open VDom.VDomTypes
         open DSLHelpers
-        open System.Windows.Media
-        open System.Windows
-        open System.Windows.Input
-        open System
-        open System.ComponentModel
-
-                //let column              = defaultArg column              -1
-                //let columnSpan          = defaultArg columnSpan          -1
-                //let row                 = defaultArg row                 -1
-                //let rowSpan             = defaultArg rowSpan             -1
-                //let background          = defaultArg background          null
-                //let borderBrush         = defaultArg borderBrush         null
-                //let borderThickness     = defaultArg borderThickness     (new Thickness(0.,0.,0.,0.))
-                //let content             = defaultArg content             null
-                //let fontFamily          = defaultArg fontFamily          (FontFamily("Segoe UI"))
-                //let fontSize            = defaultArg fontSize            12.0
-                //let fontWeight          = defaultArg fontWeight          FontWeights.Normal
-                //let foreground          = defaultArg foreground          Brushes.Black
-                //let isEnabled           = defaultArg isEnabled           true
-                //let width               = defaultArg width               nan
-                //let height              = defaultArg height              nan
-                //let opacity             = defaultArg opacity             1.0
-                //let horizontalAlignment = defaultArg horizontalAlignment HorizontalAlignment.Stretch
-                //let margin              = defaultArg margin              (new Thickness(0.,0.,0.,0.))
-                //let verticalAlignment   = defaultArg verticalAlignment   VerticalAlignment.Stretch
-                //let visibility          = defaultArg visibility          Visibility.Visible         
 
 
         type WPF =    
@@ -182,6 +162,277 @@ module DSL =
                       WPFEvents  = vevents |> WPFEvents 
                       Events     = [] |> VEvents  }
                 WPFTree (node, [])      
+
+
+            (*** ****************** ***) 
+            (***      CheckBox      ***) 
+            (*** ****************** ***) 
+            static member checkBox( ?Column               : int 
+                                   ,?ColumnSpan           : int 
+                                   ,?Row                  : int 
+                                   ,?RowSpan              : int 
+                                   ,?Background           : Brush 
+                                   ,?BorderBrush          : Brush 
+                                   ,?BorderThickness      : Thickness 
+                                   ,?Content              : obj  
+                                   ,?FontFamily           : FontFamily 
+                                   ,?FontSize             : float  
+                                   ,?FontWeight           : FontWeight 
+                                   ,?Foreground           : Brush 
+                                   ,?IsChecked            : bool
+                                   ,?IsEnabled            : bool
+                                   ,?IsThreeState         : bool
+                                   ,?Width                : float 
+                                   ,?Height               : float 
+                                   ,?Opacity              : float 
+                                   ,?HorizontalAlignment  : HorizontalAlignment 
+                                   ,?Margin               : Thickness 
+                                   ,?VerticalAlignment    : VerticalAlignment 
+                                   ,?Visibility           : Visibility  
+                                   ,?Click                : RoutedEventArgs -> 'Msg 
+                                   ,?Checked              : RoutedEventArgs -> 'Msg 
+                                   ,?Unchecked            : RoutedEventArgs -> 'Msg 
+                                   ,?Indeterminate        : RoutedEventArgs -> 'Msg  ) = 
+                           
+                let bindedVProperties () =
+                    ([],0)
+                    |> bindVProperties Column               VProperty.Column         
+                    |> bindVProperties ColumnSpan           VProperty.ColumnSpan         
+                    |> bindVProperties Row                  VProperty.Row
+                    |> bindVProperties RowSpan              VProperty.RowSpan         
+                    |> bindVProperties Background           VProperty.Background         
+                    |> bindVProperties BorderBrush          VProperty.BorderBrush        
+                    |> bindVProperties BorderThickness      VProperty.BorderThickness    
+                    |> bindVProperties Content              VProperty.Content     
+                    |> bindVProperties FontFamily           VProperty.FontFamily         
+                    |> bindVProperties FontSize             VProperty.FontSize          
+                    |> bindVProperties FontWeight           VProperty.FontWeight         
+                    |> bindVProperties Foreground           VProperty.Foreground         
+                    |> bindVProperties IsChecked            VProperty.IsChecked          
+                    |> bindVProperties IsEnabled            VProperty.IsEnabled          
+                    |> bindVProperties IsThreeState         VProperty.IsThreeState          
+                    |> bindVProperties Width                VProperty.Width           
+                    |> bindVProperties Height               VProperty.Height             
+                    |> bindVProperties Opacity              VProperty.Opacity            
+                    |> bindVProperties HorizontalAlignment  VProperty.HorizontalAlignment
+                    |> bindVProperties Margin               VProperty.Margin 
+                    |> bindVProperties VerticalAlignment    VProperty.VerticalAlignment  
+                    |> bindVProperties Visibility           VProperty.Visibility                        
+                    |> fst
+                let bindedVEvents () =
+                    ([],0)
+                    |> bindWPFEvents Click (fun x -> new RoutedEventHandler(x)) WPFClick                    
+                    |> bindWPFEvents Checked (fun x -> new RoutedEventHandler(x)) WPFChecked                    
+                    |> bindWPFEvents Unchecked (fun x -> new RoutedEventHandler(x)) WPFUnchecked                    
+                    |> bindWPFEvents Indeterminate (fun x -> new RoutedEventHandler(x)) WPFIndeterminate                    
+                    |> fst
+
+                let vprops  = bindedVProperties ()
+                let vevents = bindedVEvents ()
+                let node =
+                    { Tag        = Tag.Control CheckBox
+                      Properties = vprops  |> VProperties
+                      WPFEvents  = vevents |> WPFEvents 
+                      Events     = [] |> VEvents  }
+                WPFTree (node, [])                
+
+
+            (*** ****************** ***) 
+            (***    ProgressBar     ***) 
+            (*** ****************** ***) 
+
+            static member progressBar( ?Column              : int 
+                                      ,?ColumnSpan          : int 
+                                      ,?Row                 : int 
+                                      ,?RowSpan             : int 
+                                      ,?Background          : Brush 
+                                      ,?BorderBrush         : Brush 
+                                      ,?BorderThickness     : Thickness 
+                                      ,?FontFamily          : FontFamily 
+                                      ,?FontSize            : float  
+                                      ,?FontWeight          : FontWeight 
+                                      ,?Foreground          : Brush 
+                                      ,?IsEnabled           : bool
+                                      ,?Width               : float 
+                                      ,?Height              : float 
+                                      ,?Opacity             : float 
+                                      ,?HorizontalAlignment : HorizontalAlignment 
+                                      ,?Margin              : Thickness 
+                                      ,?VerticalAlignment   : VerticalAlignment 
+                                      ,?Visibility          : Visibility  
+                                      ,?IsIndeterminate     : bool
+                                      ,?Value               : float
+                                      ,?Minimum             : float
+                                      ,?Maximum             : float ) = 
+                           
+                let bindedVProperties () =
+                    ([],0)
+                    |> bindVProperties Column               VProperty.Column         
+                    |> bindVProperties ColumnSpan           VProperty.ColumnSpan         
+                    |> bindVProperties Row                  VProperty.Row
+                    |> bindVProperties RowSpan              VProperty.RowSpan         
+                    |> bindVProperties Background           VProperty.Background         
+                    |> bindVProperties BorderBrush          VProperty.BorderBrush        
+                    |> bindVProperties BorderThickness      VProperty.BorderThickness    
+                    |> bindVProperties FontFamily           VProperty.FontFamily         
+                    |> bindVProperties FontSize             VProperty.FontSize          
+                    |> bindVProperties FontWeight           VProperty.FontWeight         
+                    |> bindVProperties Foreground           VProperty.Foreground         
+                    |> bindVProperties IsEnabled            VProperty.IsEnabled          
+                    |> bindVProperties Width                VProperty.Width           
+                    |> bindVProperties Height               VProperty.Height             
+                    |> bindVProperties Opacity              VProperty.Opacity            
+                    |> bindVProperties HorizontalAlignment  VProperty.HorizontalAlignment
+                    |> bindVProperties Margin               VProperty.Margin 
+                    |> bindVProperties VerticalAlignment    VProperty.VerticalAlignment  
+                    |> bindVProperties Visibility           VProperty.Visibility                        
+                    |> bindVProperties IsIndeterminate      VProperty.IsIndeterminate                        
+                    |> bindVProperties Value                VProperty.Value                        
+                    |> bindVProperties Minimum              VProperty.Minimum                        
+                    |> bindVProperties Maximum              VProperty.Maximum                        
+                    |> fst
+
+                let vprops  = bindedVProperties ()
+                let node =
+                    { Tag        = Tag.Control CheckBox
+                      Properties = vprops  |> VProperties
+                      WPFEvents  = [] |> WPFEvents 
+                      Events     = [] |> VEvents  }
+                WPFTree (node, [])                
+
+
+
+            //(*** ****************** ***) 
+            //(***    ComboBox        ***) 
+            //(*** ****************** ***) 
+            ////let c = new System.Windows.Controls.ComboBox()
+            ////let ci = new System.Windows.Controls.ComboBoxItem()
+            ////ci.conten
+            ////c.SelectionChanged
+
+            //static member comboBox( ?Column              : int 
+            //                       ,?ColumnSpan          : int 
+            //                       ,?Row                 : int 
+            //                       ,?RowSpan             : int 
+            //                       ,?Background          : Brush 
+            //                       ,?BorderBrush         : Brush 
+            //                       ,?BorderThickness     : Thickness 
+            //                       ,?FontFamily          : FontFamily 
+            //                       ,?FontSize            : float  
+            //                       ,?FontWeight          : FontWeight 
+            //                       ,?Foreground          : Brush 
+            //                       ,?IsEnabled           : bool
+            //                       ,?Width               : float 
+            //                       ,?Height              : float 
+            //                       ,?Opacity             : float 
+            //                       ,?HorizontalAlignment : HorizontalAlignment 
+            //                       ,?Margin              : Thickness 
+            //                       ,?VerticalAlignment   : VerticalAlignment 
+            //                       ,?Visibility          : Visibility  
+            //                       ,?IsIndeterminate     : bool
+            //                       ,?Value               : float
+            //                       ,?Minimum             : float
+            //                       ,?Maximum             : float 
+            //                       ,?SelectionChanged    : SelectionChangedEventArgs -> 'Msg  ) = 
+                           
+            //    let bindedVProperties () =
+            //        ([],0)
+            //        |> bindVProperties Column               VProperty.Column         
+            //        |> bindVProperties ColumnSpan           VProperty.ColumnSpan         
+            //        |> bindVProperties Row                  VProperty.Row
+            //        |> bindVProperties RowSpan              VProperty.RowSpan         
+            //        |> bindVProperties Background           VProperty.Background         
+            //        |> bindVProperties BorderBrush          VProperty.BorderBrush        
+            //        |> bindVProperties BorderThickness      VProperty.BorderThickness    
+            //        |> bindVProperties FontFamily           VProperty.FontFamily         
+            //        |> bindVProperties FontSize             VProperty.FontSize          
+            //        |> bindVProperties FontWeight           VProperty.FontWeight         
+            //        |> bindVProperties Foreground           VProperty.Foreground         
+            //        |> bindVProperties IsEnabled            VProperty.IsEnabled          
+            //        |> bindVProperties Width                VProperty.Width           
+            //        |> bindVProperties Height               VProperty.Height             
+            //        |> bindVProperties Opacity              VProperty.Opacity            
+            //        |> bindVProperties HorizontalAlignment  VProperty.HorizontalAlignment
+            //        |> bindVProperties Margin               VProperty.Margin 
+            //        |> bindVProperties VerticalAlignment    VProperty.VerticalAlignment  
+            //        |> bindVProperties Visibility           VProperty.Visibility                        
+            //        |> bindVProperties IsIndeterminate      VProperty.IsIndeterminate                        
+            //        |> bindVProperties Value                VProperty.Value                        
+            //        |> bindVProperties Minimum              VProperty.Minimum                        
+            //        |> bindVProperties Maximum              VProperty.Maximum                        
+            //        |> fst
+
+            //    let bindedVEvents () =
+            //        ([],0)
+            //        |> bindWPFEvents SelectionChanged (fun x -> new SelectionChangedEventHandler(x)) WPFSelectionChanged
+            //        |> fst
+
+            //    let vprops  = bindedVProperties ()
+            //    let vevents = bindedVEvents ()
+            //    let node =
+            //        { Tag        = Tag.Control ComboBox
+            //          Properties = vprops  |> VProperties
+            //          WPFEvents  = vevents |> WPFEvents 
+            //          Events     = [] |> VEvents  }
+            //    WPFTree (node, [])                
+
+            (*** ****************** ***) 
+            (***    TextBox         ***) 
+            (*** ****************** ***) 
+
+            static member textBox( ?Column              : int 
+                                  ,?ColumnSpan          : int 
+                                  ,?Row                 : int 
+                                  ,?RowSpan             : int 
+                                  ,?Background          : Brush 
+                                  ,?BorderBrush         : Brush 
+                                  ,?BorderThickness     : Thickness 
+                                  ,?FontFamily          : FontFamily 
+                                  ,?FontSize            : float  
+                                  ,?FontWeight          : FontWeight 
+                                  ,?Foreground          : Brush 
+                                  ,?IsEnabled           : bool
+                                  ,?Width               : float 
+                                  ,?Height              : float 
+                                  ,?Opacity             : float 
+                                  ,?HorizontalAlignment : HorizontalAlignment 
+                                  ,?Margin              : Thickness 
+                                  ,?VerticalAlignment   : VerticalAlignment 
+                                  ,?Visibility          : Visibility  
+                                  ,?Text                : string ) = 
+                           
+                let bindedVProperties () =
+                    ([],0)
+                    |> bindVProperties Column               VProperty.Column         
+                    |> bindVProperties ColumnSpan           VProperty.ColumnSpan         
+                    |> bindVProperties Row                  VProperty.Row
+                    |> bindVProperties RowSpan              VProperty.RowSpan         
+                    |> bindVProperties Background           VProperty.Background         
+                    |> bindVProperties BorderBrush          VProperty.BorderBrush        
+                    |> bindVProperties BorderThickness      VProperty.BorderThickness    
+                    |> bindVProperties FontFamily           VProperty.FontFamily         
+                    |> bindVProperties FontSize             VProperty.FontSize          
+                    |> bindVProperties FontWeight           VProperty.FontWeight         
+                    |> bindVProperties Foreground           VProperty.Foreground         
+                    |> bindVProperties IsEnabled            VProperty.IsEnabled          
+                    |> bindVProperties Width                VProperty.Width           
+                    |> bindVProperties Height               VProperty.Height             
+                    |> bindVProperties Opacity              VProperty.Opacity            
+                    |> bindVProperties HorizontalAlignment  VProperty.HorizontalAlignment
+                    |> bindVProperties Margin               VProperty.Margin 
+                    |> bindVProperties VerticalAlignment    VProperty.VerticalAlignment  
+                    |> bindVProperties Visibility           VProperty.Visibility                        
+                    |> bindVProperties Text                 VProperty.Text                        
+                    |> fst
+
+                let vprops  = bindedVProperties ()
+                let node =
+                    { Tag        = Tag.Control TextBox
+                      Properties = vprops  |> VProperties
+                      WPFEvents  = [] |> WPFEvents 
+                      Events     = [] |> VEvents  }
+                WPFTree (node, [])                
+
 
 
             (*** ****************** ***) 
@@ -338,3 +589,5 @@ module DSL =
                   WPFEvents  = vevents |> WPFEvents 
                   Events     = [] |> VEvents  }
 
+    
+    
