@@ -46,7 +46,7 @@ module MVU =
                               IsClicked = not model.IsClicked 
                               Clicks = model.Clicks + 1 }
             let command =
-                if model.Clicks = 100 then
+                if model.Clicks = 1 then
                     let timerTick dispatch =
                         async{
                             let timer = new System.Timers.Timer(1000.)
@@ -65,7 +65,6 @@ module MVU =
 
 
     let viewGridChildren (model:Model) = 
-        let res = [ for i in 1..2 -> WPF.textBlock(Row = 2, Text = "Hello WPF!") ]
 
         [   
             
@@ -76,6 +75,7 @@ module MVU =
                                   VerticalAlignment = VerticalAlignment.Top,
                                   Content = ("Say Hello!" |> box), 
                                   Click = fun _ -> MsgUpdate    ) 
+                yield WPF.textBlock(Row = 2, Text = "Hello WPF!")
             else
                 yield WPF.button( Row = 0, 
                                   VerticalAlignment = VerticalAlignment.Top,
@@ -83,9 +83,14 @@ module MVU =
                                   Click = fun _ -> MsgUpdate    ) 
                               
             yield WPF.textBlock( Row = 1 , Text = (sprintf "Ticks : %i !" model.Ticks) )
+            yield WPF.progressBar( Row = 3 , IsIndeterminate = true)
+            yield WPF.stackPanel( 
+                    Row = 4 ,
+                    Children = 
+                        [ yield WPF.checkBox()
+                          yield WPF.textBox(Text = "What's up")]
+                   )
 
-            if model.IsClicked then                       
-                yield! res
         ]
 
     
@@ -93,8 +98,10 @@ module MVU =
         WPF.window( WPF.grid( RowDefinitions = 
                                 [  {Height=5;Unit=GridUnitType.Star}
                                    {Height=3;Unit=GridUnitType.Star}
-                                   {Height=3;Unit=GridUnitType.Star}  ],
-                              
+                                   {Height=3;Unit=GridUnitType.Star}
+                                   {Height=3;Unit=GridUnitType.Star}
+                                   {Height=5;Unit=GridUnitType.Star}
+                                ],                              
                               Children = viewGridChildren model ),
                     Width = 500., 
                     Height = 300. )                

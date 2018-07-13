@@ -64,7 +64,8 @@ module VDom =
             | IsIndeterminate     of bool                      
             | Value               of float         
             | Minimum             of float           
-            | Maximum             of float           
+            | Maximum             of float      
+            | TextForTextBox      of string
 
         type VProperties = VProperties of (VProperty*int) list  
           
@@ -259,7 +260,7 @@ module VDom =
             | Value               _ ->  Value               progressBar_Value
             | Minimum             _ ->  Minimum             progressBar_Minimum
             | Maximum             _ ->  Maximum             progressBar_Maximum
-
+            | TextForTextBox      _ ->  TextForTextBox      textBlock_text
 
 
 
@@ -295,7 +296,7 @@ module VDom =
             | ControlUpdate             of (Control -> unit)
             | RangeBaseUpdate           of (RangeBase -> unit)
             | ProgressBarUpdate         of (ProgressBar -> unit)
-
+            | TextBoxUpdate             of (TextBox -> unit)
 
         
         type Tag with
@@ -358,7 +359,7 @@ module VDom =
                     | Minimum             m     -> RangeBaseUpdate ( fun rb -> rb.Minimum <- m )
                     | Maximum             m     -> RangeBaseUpdate ( fun rb -> rb.Maximum <- m )
                     | IsIndeterminate     ii    -> ProgressBarUpdate ( fun pb -> pb.IsIndeterminate <- ii )
-
+                    | TextForTextBox      ttb    -> TextBoxUpdate ( fun tb -> tb.Text <- ttb )
 
         type VEvent with           
             member x.EventAdd() =     
@@ -414,7 +415,11 @@ module VDom =
                 | UIElementUpdate           uiElementUp     -> uiElementUp     uiElement 
                 | FrameworkElementUpdate    frameworkElemUp -> frameworkElemUp (uiElement :?> FrameworkElement)
                 | ControlUpdate             controlUp       -> controlUp       (uiElement :?> Control)
-                | _                                         -> failwith "Code mistake"
+                | RangeBaseUpdate           rangeBaseUp     -> rangeBaseUp     (uiElement :?> RangeBase)
+                | ProgressBarUpdate         progressBarUp   -> progressBarUp   (uiElement :?> ProgressBar)
+                | CheckBoxUpdate            checkBoxUp      -> checkBoxUp      (uiElement :?> CheckBox)
+                | WindowUpdate              windowUp        -> windowUp        (uiElement :?> Window)
+                | TextBoxUpdate             textBoxUp       -> textBoxUp       (uiElement :?> TextBox)
                 )
 
         let private handleEvents (action:VEvent -> WPFObjectUpdate) events (uiElement : UIElement) =              
@@ -428,7 +433,11 @@ module VDom =
                 | UIElementUpdate           uiElementUp     -> uiElementUp     uiElement 
                 | FrameworkElementUpdate    frameworkElemUp -> frameworkElemUp (uiElement :?> FrameworkElement)
                 | ControlUpdate             controlUp       -> controlUp       (uiElement :?> Control)
-                | _                                         -> failwith "Code mistake"
+                | RangeBaseUpdate           rangeBaseUp     -> rangeBaseUp     (uiElement :?> RangeBase)
+                | ProgressBarUpdate         progressBarUp   -> progressBarUp   (uiElement :?> ProgressBar)
+                | CheckBoxUpdate            checkBoxUp      -> checkBoxUp      (uiElement :?> CheckBox)
+                | WindowUpdate              windowUp        -> windowUp        (uiElement :?> Window)
+                | TextBoxUpdate             textBoxUp       -> textBoxUp       (uiElement :?> TextBox)
                 )
 
         let internal addHandlerEvents events (uiElement : UIElement) = handleEvents (fun vevent -> vevent.EventAdd()) events uiElement

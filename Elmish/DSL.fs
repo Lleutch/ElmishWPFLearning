@@ -294,7 +294,7 @@ module DSL =
 
                 let vprops  = bindedVProperties ()
                 let node =
-                    { Tag        = Tag.Control CheckBox
+                    { Tag        = Tag.Control ProgressBar
                       Properties = vprops  |> VProperties
                       WPFEvents  = [] |> WPFEvents 
                       Events     = [] |> VEvents  }
@@ -422,7 +422,7 @@ module DSL =
                     |> bindVProperties Margin               VProperty.Margin 
                     |> bindVProperties VerticalAlignment    VProperty.VerticalAlignment  
                     |> bindVProperties Visibility           VProperty.Visibility                        
-                    |> bindVProperties Text                 VProperty.Text                        
+                    |> bindVProperties Text                 VProperty.TextForTextBox                        
                     |> fst
 
                 let vprops  = bindedVProperties ()
