@@ -2,12 +2,11 @@
 
 
 module VDom =
+    open System.Windows
+    open System.Windows.Media
 
 
     module VDomTypes =
-        open System.Windows
-        open System.Windows.Controls
-        open System.Windows.Media
         open System.Windows.Input
         open System
         open System.ComponentModel
@@ -20,7 +19,48 @@ module VDom =
             { Height : int
               Unit   : GridUnitType }
 
+        type UIElementStyle =
+            | Column        of int 
+            | ColumnSpan    of int 
+            | Row           of int 
+            | RowSpan       of int 
+            | IsEnabled     of bool
+            | Opacity       of float
+            | Visibility    of Visibility
+
+        type FrameworkElementStyle = 
+            | Height                of float
+            | HorizontalAlignment   of HorizontalAlignment
+            | Margin                of Thickness
+            | VerticalAlignment     of VerticalAlignment
+            | Width                 of float
+            
+        type ControlStyle =
+            | Background                    of Brush
+            | BorderBrush                   of Brush
+            | BorderThickness               of Thickness
+            | FontFamily                    of FontFamily
+            | FontSize                      of float
+            | FontStretch                   of FontStretch
+            | FontStyle                     of FontStyle
+            | FontWeight                    of FontWeight
+            | Foreground                    of Brush
+            | HorizontalContentAlignment    of HorizontalAlignment
+            | Padding                       of Thickness
+            | VerticalContentAlignment      of VerticalAlignment
+                        
+        type PanelStyle =
+            | Background of Brush
+       
+        type VStyle = 
+            | UIElementStyle of UIElementStyle
+            | FrameworkElementStyle of FrameworkElementStyle
+            | ControlStyle of ControlStyle
+            | PanelStyle of PanelStyle
+
+
         type VProperty =
+            | VStyle              of VStyle
             // Window Related
             | WindowStyle         of WindowStyle
             | WindowState         of WindowState
@@ -30,34 +70,13 @@ module VDom =
             // Layout Related
             | ColumnDefinitions   of ColDef list
             | RowDefinitions      of RowDef list
-            | Column              of int 
-            | ColumnSpan          of int 
-            | Row                 of int 
-            | RowSpan             of int 
-            | Width               of float 
-            | Height              of float 
-            | Padding             of Thickness
-            | Margin              of Thickness 
-            | HorizontalAlignment of HorizontalAlignment 
-            | VerticalAlignment   of VerticalAlignment 
             // Text Related
             | Content             of obj 
             | Text                of string 
             | TextAlignment       of TextAlignment 
             | TextWrapping        of TextWrapping
-            | FontFamily          of FontFamily 
-            | FontSize            of float 
-            | FontWeight          of FontWeight 
-            // Styling
-            | Background          of Brush 
-            | BorderBrush         of Brush 
-            | BorderThickness     of Thickness 
-            | Foreground          of Brush 
-            // Visibily related
-            | Visibility          of Visibility 
-            | Opacity             of float 
             // Element state related
-            | IsEnabled           of bool 
+            | IsEnabled           of bool
             | IsThreeState        of bool 
             | IsChecked           of bool 
             // Progress related
@@ -107,6 +126,7 @@ module VDom =
         type Tag =
             | Container of TaggedContainer
             | Control   of TaggedControl
+
 
         type WPFLambda<'Msg,'args,'handler> = ('args -> 'Msg) * ((obj -> 'args -> unit) -> 'handler)
 
@@ -165,6 +185,8 @@ module VDom =
         let internal fontFamily          = Media.FontFamily("Segoe UI")
         let internal fontSize            = 12.0 
         let internal fontWeight          = FontWeights.Normal
+        let internal fontStretch         = FontStretches.Normal
+        let internal fontStyle           = FontStyles.Normal
         let internal height              = nan 
         let internal horizontalAlignment = HorizontalAlignment.Stretch 
         let internal isEnabled           = true
@@ -176,11 +198,13 @@ module VDom =
         let internal verticalAlignment   = VerticalAlignment.Stretch
         let internal visibility          = Visibility.Visible 
         let internal width               = nan 
-              
+        let internal borderBrush         = null 
+        let internal borderThickness     = new Thickness(0.,0.,0.,0.)
+        let internal horizontalContentAlignment = HorizontalAlignment.Left
+        let internal verticalContentAlignment   = VerticalAlignment.Top
+
         (*** Button ***)
         let internal button_Content              = null 
-        let internal button_BorderBrush          = null 
-        let internal button_BorderThickness      = new Thickness(0.,0.,0.,0.)
 
         (*** TextBlock ***)
         let internal textBlock_text            = "" 
@@ -188,6 +212,7 @@ module VDom =
         let internal textBlock_textWrapping    = TextWrapping.NoWrap
 
         (*** CheckBox ***)
+        let internal checkBox_IsEnabled     = false 
         let internal checkBox_IsChecked     = false 
         let internal checkBox_IsThreeState  = false 
 
@@ -216,6 +241,35 @@ module VDom =
 
         let getVpropertyDefaultValue (vProp : VProperty) =
             match vProp with
+            // UIElementStyle
+            | VStyle (UIElementStyle (Column     _ ))    -> VStyle (UIElementStyle (Column       column))
+            | VStyle (UIElementStyle (ColumnSpan _ ))    -> VStyle (UIElementStyle (ColumnSpan   columnSpan))
+            | VStyle (UIElementStyle (Row        _ ))    -> VStyle (UIElementStyle (Row          row))
+            | VStyle (UIElementStyle (RowSpan    _ ))    -> VStyle (UIElementStyle (RowSpan      rowSpan))
+            | VStyle (UIElementStyle (UIElementStyle.IsEnabled  _ ))    -> VStyle (UIElementStyle (UIElementStyle.IsEnabled    isEnabled))
+            | VStyle (UIElementStyle (Opacity    _ ))    -> VStyle (UIElementStyle (Opacity      opacity)) 
+            | VStyle (UIElementStyle (Visibility _ ))    -> VStyle (UIElementStyle (Visibility   visibility))
+            // FrameworkElementStyle
+            | VStyle (FrameworkElementStyle (Height                _ )) -> VStyle (FrameworkElementStyle (Height              height))
+            | VStyle (FrameworkElementStyle (HorizontalAlignment   _ )) -> VStyle (FrameworkElementStyle (HorizontalAlignment horizontalAlignment))
+            | VStyle (FrameworkElementStyle (Margin                _ )) -> VStyle (FrameworkElementStyle (Margin              margin))
+            | VStyle (FrameworkElementStyle (VerticalAlignment     _ )) -> VStyle (FrameworkElementStyle (VerticalAlignment   verticalAlignment))
+            | VStyle (FrameworkElementStyle (Width                 _ )) -> VStyle (FrameworkElementStyle (Width               width))
+            // ControlStyle =
+            | VStyle (ControlStyle (ControlStyle.Background     _)) -> VStyle (ControlStyle ( ControlStyle.Background    background))
+            | VStyle (ControlStyle (BorderBrush                 _)) -> VStyle (ControlStyle ( BorderBrush                borderBrush))
+            | VStyle (ControlStyle (BorderThickness             _)) -> VStyle (ControlStyle ( BorderThickness            borderThickness))
+            | VStyle (ControlStyle (FontFamily                  _)) -> VStyle (ControlStyle ( FontFamily                 fontFamily))
+            | VStyle (ControlStyle (FontSize                    _)) -> VStyle (ControlStyle ( FontSize                   fontSize))
+            | VStyle (ControlStyle (FontStretch                 _)) -> VStyle (ControlStyle ( FontStretch                fontStretch))
+            | VStyle (ControlStyle (FontStyle                   _)) -> VStyle (ControlStyle ( FontStyle                  fontStyle))
+            | VStyle (ControlStyle (FontWeight                  _)) -> VStyle (ControlStyle ( FontWeight                 fontWeight))
+            | VStyle (ControlStyle (Foreground                  _)) -> VStyle (ControlStyle ( Foreground                 foreground))
+            | VStyle (ControlStyle (HorizontalContentAlignment  _)) -> VStyle (ControlStyle ( HorizontalContentAlignment horizontalContentAlignment))
+            | VStyle (ControlStyle (Padding                     _)) -> VStyle (ControlStyle ( Padding                    padding))
+            | VStyle (ControlStyle (VerticalContentAlignment    _)) -> VStyle (ControlStyle ( VerticalContentAlignment   verticalContentAlignment))
+            // PanelStyle =
+            | VStyle (PanelStyle (PanelStyle.Background     _)) -> VStyle (PanelStyle ( PanelStyle.Background    background))            
             // Window Related
             | WindowStyle         _ ->  WindowStyle         window_WindowStyle 
             | WindowState         _ ->  WindowState         window_WindowState
@@ -225,34 +279,13 @@ module VDom =
             // Layout Related          
             | ColumnDefinitions   _ ->  ColumnDefinitions   grid_ColumnDefinitions
             | RowDefinitions      _ ->  RowDefinitions      grid_RowDefinitions
-            | Column              _ ->  Column              column
-            | ColumnSpan          _ ->  ColumnSpan          columnSpan
-            | Row                 _ ->  Row                 row
-            | RowSpan             _ ->  RowSpan             rowSpan
-            | Width               _ ->  Width               width
-            | Height              _ ->  Height              height 
-            | Padding             _ ->  Padding             padding
-            | Margin              _ ->  Margin              margin
-            | HorizontalAlignment _ ->  HorizontalAlignment horizontalAlignment
-            | VerticalAlignment   _ ->  VerticalAlignment   verticalAlignment
             // Text Related            
             | Content             _ ->  Content             button_Content
             | Text                _ ->  Text                textBlock_text
             | TextAlignment       _ ->  TextAlignment       textBlock_textAlignment
             | TextWrapping        _ ->  TextWrapping        textBlock_textWrapping
-            | FontFamily          _ ->  FontFamily          fontFamily
-            | FontSize            _ ->  FontSize            fontSize
-            | FontWeight          _ ->  FontWeight          fontWeight
-            // Styling                 
-            | Background          _ ->  Background          background
-            | BorderBrush         _ ->  BorderBrush         button_BorderBrush
-            | BorderThickness     _ ->  BorderThickness     button_BorderThickness
-            | Foreground          _ ->  Foreground          foreground
-            // Visibily related        
-            | Visibility          _ ->  Visibility          visibility
-            | Opacity             _ ->  Opacity             opacity
             // Element state related
-            | IsEnabled           _ ->  IsEnabled           isEnabled
+            | IsEnabled           _ ->  IsEnabled           checkBox_IsEnabled
             | IsThreeState        _ ->  IsThreeState        checkBox_IsThreeState
             | IsChecked           _ ->  IsChecked           checkBox_IsChecked
             // Progress related
@@ -286,14 +319,15 @@ module VDom =
                 rd
               
         type WPFObjectUpdate =
+            | UIElementUpdate           of (UIElement -> unit)
+            | FrameworkElementUpdate    of (FrameworkElement -> unit)
+            | ControlUpdate             of (Control -> unit)
+            | PanelUpdate               of (Panel -> unit)
+            | WindowUpdate              of (Window -> unit)
             | ButtonUpdate              of (Button -> unit)
             | TextBlockUpdate           of (TextBlock -> unit)
             | CheckBoxUpdate            of (CheckBox -> unit)
             | GridUpdate                of (Grid -> unit)
-            | WindowUpdate              of (Window -> unit)
-            | UIElementUpdate           of (UIElement -> unit)
-            | FrameworkElementUpdate    of (FrameworkElement -> unit)
-            | ControlUpdate             of (Control -> unit)
             | RangeBaseUpdate           of (RangeBase -> unit)
             | ProgressBarUpdate         of (ProgressBar -> unit)
             | TextBoxUpdate             of (TextBox -> unit)
@@ -315,51 +349,59 @@ module VDom =
         type VProperty with
             member x.PropertyUpdate() =
                 match x with
-                    // Window Related
-                    | WindowStyle         ws    -> WindowUpdate (fun w -> w.WindowStyle <- ws) 
-                    | WindowState         ws    -> WindowUpdate (fun w -> w.WindowState <- ws) 
-                    | Title               t     -> WindowUpdate (fun w -> w.Title <- t) 
-                    | ResizeMode          rm    -> WindowUpdate (fun w -> w.ResizeMode <- rm) 
-                    | AllowsTransparency  at    -> WindowUpdate (fun w -> w.AllowsTransparency <- at) 
-                    // Layout Related
-                    | ColumnDefinitions   cd    -> GridUpdate (fun gr -> cd |> List.iter(fun c -> gr.ColumnDefinitions.Add(c.Convert())) ) 
-                    | RowDefinitions      rd    -> GridUpdate (fun gr -> rd |> List.iter(fun r -> gr.RowDefinitions.Add(r.Convert())) ) 
-                    | Column              c     -> UIElementUpdate (fun ui -> Grid.SetColumn(ui,c))
-                    | ColumnSpan          cs    -> UIElementUpdate (fun ui -> Grid.SetColumnSpan(ui,cs))
-                    | Row                 r     -> UIElementUpdate (fun ui -> Grid.SetRow(ui,r))
-                    | RowSpan             rs    -> UIElementUpdate (fun ui -> Grid.SetRowSpan(ui,rs)) 
-                    | Width               w     -> FrameworkElementUpdate (fun fw -> fw.Width <- w) 
-                    | Height              h     -> FrameworkElementUpdate (fun fw -> fw.Height <- h) 
-                    | Padding             p     -> TextBlockUpdate (fun tb -> tb.Padding <- p)
-                    | Margin              m     -> FrameworkElementUpdate (fun fw -> fw.Margin <- m)
-                    | HorizontalAlignment ha    -> FrameworkElementUpdate (fun fw -> fw.HorizontalAlignment <- ha)
-                    | VerticalAlignment   va    -> FrameworkElementUpdate (fun fw -> fw.VerticalAlignment <- va)
-                    // Text Related
-                    | Content             c     -> ButtonUpdate (fun b -> b.Content <- c)
-                    | Text                t     -> TextBlockUpdate (fun tb -> tb.Text <- t) 
-                    | TextAlignment       ta    -> TextBlockUpdate (fun tb -> tb.TextAlignment <- ta)
-                    | TextWrapping        tw    -> TextBlockUpdate (fun tb -> tb.TextWrapping <- tw)
-                    | FontFamily          ff    -> TextBlockUpdate (fun tb -> tb.FontFamily <- ff)
-                    | FontSize            fs    -> TextBlockUpdate (fun tb -> tb.FontSize <- fs)
-                    | FontWeight          fw    -> TextBlockUpdate (fun tb -> tb.FontWeight <- fw)
-                    // Styling
-                    | Background          b     -> ControlUpdate (fun c -> c.Background <- b)
-                    | BorderBrush         bb    -> ControlUpdate (fun c -> c.BorderBrush <- bb)
-                    | BorderThickness     bt    -> ControlUpdate (fun c -> c.BorderThickness <- bt) 
-                    | Foreground          f     -> ControlUpdate (fun c -> c.Foreground <- f) 
-                    // Visibily related
-                    | Visibility          v     -> UIElementUpdate (fun ui -> ui.Visibility <- v)
-                    | Opacity             o     -> UIElementUpdate (fun ui -> ui.Opacity <- o)
-                    // Element state related
-                    | IsEnabled           ie    -> UIElementUpdate (fun ui -> ui.IsEnabled <- ie) 
-                    | IsThreeState        its   -> CheckBoxUpdate  (fun ui -> ui.IsThreeState <- its)
-                    | IsChecked           ic    -> CheckBoxUpdate  (fun ui -> ui.IsChecked <- Nullable(ic))
-                    // Progress related
-                    | Value               v     -> RangeBaseUpdate ( fun rb -> rb.Value <- v )
-                    | Minimum             m     -> RangeBaseUpdate ( fun rb -> rb.Minimum <- m )
-                    | Maximum             m     -> RangeBaseUpdate ( fun rb -> rb.Maximum <- m )
-                    | IsIndeterminate     ii    -> ProgressBarUpdate ( fun pb -> pb.IsIndeterminate <- ii )
-                    | TextForTextBox      ttb    -> TextBoxUpdate ( fun tb -> tb.Text <- ttb )
+                // UIElementStyle
+                | VStyle (UIElementStyle (Column     c ))    -> UIElementUpdate (fun ui -> Grid.SetColumn(ui,c))
+                | VStyle (UIElementStyle (ColumnSpan cs ))   -> UIElementUpdate (fun ui -> Grid.SetColumnSpan(ui,cs))
+                | VStyle (UIElementStyle (Row        r ))    -> UIElementUpdate (fun ui -> Grid.SetRow(ui,r))
+                | VStyle (UIElementStyle (RowSpan    rs ))   -> UIElementUpdate (fun ui -> Grid.SetRowSpan(ui,rs)) 
+                | VStyle (UIElementStyle (UIElementStyle.IsEnabled  ie ))   -> UIElementUpdate (fun ui -> ui.IsEnabled <- ie) 
+                | VStyle (UIElementStyle (Opacity    o ))    -> UIElementUpdate (fun ui -> ui.Opacity <- o) 
+                | VStyle (UIElementStyle (Visibility v ))    -> UIElementUpdate (fun ui -> ui.Visibility <- v) 
+                // FrameworkElementStyle
+                | VStyle (FrameworkElementStyle (Height                h ))     -> FrameworkElementUpdate (fun fw -> fw.Height <- h)
+                | VStyle (FrameworkElementStyle (HorizontalAlignment   ha ))    -> FrameworkElementUpdate (fun fw -> fw.HorizontalAlignment <- ha)
+                | VStyle (FrameworkElementStyle (Margin                m ))     -> FrameworkElementUpdate (fun fw -> fw.Margin <- m)
+                | VStyle (FrameworkElementStyle (VerticalAlignment     va ))    -> FrameworkElementUpdate (fun fw -> fw.VerticalAlignment <- va)
+                | VStyle (FrameworkElementStyle (Width                 w ))     -> FrameworkElementUpdate (fun fw -> fw.Width <- w)
+                // ControlStyle =
+                | VStyle (ControlStyle (ControlStyle.Background     b ))    -> ControlUpdate (fun c -> c.Background <- b)
+                | VStyle (ControlStyle (BorderBrush                 bb ))   -> ControlUpdate (fun c -> c.BorderBrush <- bb)
+                | VStyle (ControlStyle (BorderThickness             bt ))   -> ControlUpdate (fun c -> c.BorderThickness <- bt)
+                | VStyle (ControlStyle (FontFamily                  ff ))   -> ControlUpdate (fun c -> c.FontFamily <- ff)
+                | VStyle (ControlStyle (FontSize                    fs ))   -> ControlUpdate (fun c -> c.FontSize <- fs)
+                | VStyle (ControlStyle (FontStretch                 fs ))   -> ControlUpdate (fun c -> c.FontStretch <- fs)
+                | VStyle (ControlStyle (FontStyle                   fs ))   -> ControlUpdate (fun c -> c.FontStyle <- fs)
+                | VStyle (ControlStyle (FontWeight                  fw ))   -> ControlUpdate (fun c -> c.FontWeight <- fw)
+                | VStyle (ControlStyle (Foreground                  f ))    -> ControlUpdate (fun c -> c.Foreground <- f)
+                | VStyle (ControlStyle (HorizontalContentAlignment  hca ))  -> ControlUpdate (fun c -> c.HorizontalContentAlignment <- hca)
+                | VStyle (ControlStyle (Padding                     p ))    -> ControlUpdate (fun c -> c.Padding <- p)
+                | VStyle (ControlStyle (VerticalContentAlignment    vca ))  -> ControlUpdate (fun c -> c.VerticalContentAlignment <- vca)
+                // PanelStyle =
+                | VStyle (PanelStyle (PanelStyle.Background     b )) -> PanelUpdate (fun p -> p.Background <-b)
+                // Window Related
+                | WindowStyle         ws    -> WindowUpdate (fun w -> w.WindowStyle <- ws) 
+                | WindowState         ws    -> WindowUpdate (fun w -> w.WindowState <- ws) 
+                | Title               t     -> WindowUpdate (fun w -> w.Title <- t) 
+                | ResizeMode          rm    -> WindowUpdate (fun w -> w.ResizeMode <- rm) 
+                | AllowsTransparency  at    -> WindowUpdate (fun w -> w.AllowsTransparency <- at) 
+                // Layout Related
+                | ColumnDefinitions   cd    -> GridUpdate (fun gr -> cd |> List.iter(fun c -> gr.ColumnDefinitions.Add(c.Convert())) ) 
+                | RowDefinitions      rd    -> GridUpdate (fun gr -> rd |> List.iter(fun r -> gr.RowDefinitions.Add(r.Convert())) ) 
+                // Text Related
+                | Content             c     -> ButtonUpdate (fun b -> b.Content <- c)
+                | Text                t     -> TextBlockUpdate (fun tb -> tb.Text <- t) 
+                | TextAlignment       ta    -> TextBlockUpdate (fun tb -> tb.TextAlignment <- ta)
+                | TextWrapping        tw    -> TextBlockUpdate (fun tb -> tb.TextWrapping <- tw)
+                // Element state related
+                | IsEnabled           ie    -> CheckBoxUpdate  (fun ui -> ui.IsEnabled <- ie)
+                | IsThreeState        its   -> CheckBoxUpdate  (fun ui -> ui.IsThreeState <- its)
+                | IsChecked           ic    -> CheckBoxUpdate  (fun ui -> ui.IsChecked <- Nullable(ic))
+                // Progress related
+                | Value               v     -> RangeBaseUpdate ( fun rb -> rb.Value <- v )
+                | Minimum             m     -> RangeBaseUpdate ( fun rb -> rb.Minimum <- m )
+                | Maximum             m     -> RangeBaseUpdate ( fun rb -> rb.Maximum <- m )
+                | IsIndeterminate     ii    -> ProgressBarUpdate ( fun pb -> pb.IsIndeterminate <- ii )
+                | TextForTextBox      ttb    -> TextBoxUpdate ( fun tb -> tb.Text <- ttb )
 
         type VEvent with           
             member x.EventAdd() =     
@@ -410,11 +452,14 @@ module VDom =
             |> List.iter( fun (vprop,_) ->
                 match vprop.PropertyUpdate() with
                 | ButtonUpdate              buttonUp        -> buttonUp        (uiElement :?> Button) 
-                | TextBlockUpdate           textBlockUp     -> textBlockUp     (uiElement :?> TextBlock)
+                | TextBlockUpdate           textBlockUp     -> 
+                    let e = vprops
+                    textBlockUp     (uiElement :?> TextBlock)
                 | GridUpdate                gridUp          -> gridUp          (uiElement :?> Grid)
                 | UIElementUpdate           uiElementUp     -> uiElementUp     uiElement 
                 | FrameworkElementUpdate    frameworkElemUp -> frameworkElemUp (uiElement :?> FrameworkElement)
                 | ControlUpdate             controlUp       -> controlUp       (uiElement :?> Control)
+                | PanelUpdate               panelUp         -> panelUp         (uiElement :?> Panel)
                 | RangeBaseUpdate           rangeBaseUp     -> rangeBaseUp     (uiElement :?> RangeBase)
                 | ProgressBarUpdate         progressBarUp   -> progressBarUp   (uiElement :?> ProgressBar)
                 | CheckBoxUpdate            checkBoxUp      -> checkBoxUp      (uiElement :?> CheckBox)
@@ -433,6 +478,7 @@ module VDom =
                 | UIElementUpdate           uiElementUp     -> uiElementUp     uiElement 
                 | FrameworkElementUpdate    frameworkElemUp -> frameworkElemUp (uiElement :?> FrameworkElement)
                 | ControlUpdate             controlUp       -> controlUp       (uiElement :?> Control)
+                | PanelUpdate               panelUp         -> panelUp         (uiElement :?> Panel)
                 | RangeBaseUpdate           rangeBaseUp     -> rangeBaseUp     (uiElement :?> RangeBase)
                 | ProgressBarUpdate         progressBarUp   -> progressBarUp   (uiElement :?> ProgressBar)
                 | CheckBoxUpdate            checkBoxUp      -> checkBoxUp      (uiElement :?> CheckBox)
@@ -681,7 +727,7 @@ module VDom =
                     let diff = nodeDiffs oldNode newNode (NodeLoc nl)
                     let ups = 
                         match diff with
-                        | None -> aux oldTrees newTrees (NodeLoc (List.rev nl)) 0 updates
+                        | None -> aux [] [] (NodeLoc (List.rev nl)) 0 ((UpNode((NodeLoc nl),hdNew))::updates)
                         | Some (upEvents,upProps) -> aux oldTrees newTrees (NodeLoc (List.rev nl)) 0 (upEvents::upProps::updates)
                     aux tlOld tlNew (NodeLoc revList) (lineLoc + 1) ups
 

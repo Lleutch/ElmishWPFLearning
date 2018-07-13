@@ -69,23 +69,25 @@ module MVU =
         [   
             
             if model.IsClicked then 
-                yield WPF.button( Row = 0, 
-                                  Width = 110., 
-                                  Height = 46., 
-                                  VerticalAlignment = VerticalAlignment.Top,
+                yield WPF.button( style = 
+                                    new Style(Row = 0, 
+                                              Width = 110., 
+                                              Height = 46., 
+                                              VerticalAlignment = VerticalAlignment.Top) ,
                                   Content = ("Say Hello!" |> box), 
                                   Click = fun _ -> MsgUpdate    ) 
-                yield WPF.textBlock(Row = 2, Text = "Hello WPF!")
+                yield WPF.textBlock( style = new Style(Row = 2), Text = "Hello WPF!")
             else
-                yield WPF.button( Row = 0, 
-                                  VerticalAlignment = VerticalAlignment.Top,
+                yield WPF.button( style = 
+                                    new Style(Row = 0, 
+                                              VerticalAlignment = VerticalAlignment.Top) ,
                                   Content = ("Say Hello!" |> box), 
                                   Click = fun _ -> MsgUpdate    ) 
                               
-            yield WPF.textBlock( Row = 1 , Text = (sprintf "Ticks : %i !" model.Ticks) )
-            yield WPF.progressBar( Row = 3 , IsIndeterminate = true)
+            yield WPF.textBlock( style = new Style(Row = 1), Text = (sprintf "Ticks : %i !" model.Ticks) )
+            yield WPF.progressBar( style = new Style(Row = 3), IsIndeterminate = true)
             yield WPF.stackPanel( 
-                    Row = 4 ,
+                    style = new Style(Row = 4) ,
                     Children = 
                         [ yield WPF.checkBox()
                           yield WPF.textBox(Text = "What's up")]
@@ -103,8 +105,9 @@ module MVU =
                                    {Height=5;Unit=GridUnitType.Star}
                                 ],                              
                               Children = viewGridChildren model ),
-                    Width = 500., 
-                    Height = 300. )                
+                    style = 
+                        new Style(Width = 500., 
+                                  Height = 300.) )                
 
 
 open MVU
