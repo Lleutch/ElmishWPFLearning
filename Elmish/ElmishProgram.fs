@@ -87,6 +87,7 @@ module Processor =
     open VDom.VDomTypes
     open VDom.VDomExt
     open VDom.VDom
+    open VirtualConvert
 
 
     type Agent<'a> = MailboxProcessor<'a>
@@ -180,12 +181,12 @@ module Processor =
             let stubWindow : WPFWindow<'Msg> =
 
                 let nodeElementGrid : WPFNodeElement<'Msg> = 
-                    { Tag = Tag.Container Grid
+                    { Tag = Tag.NodeContainer(Grid, [])
                       Properties = VProperties []
                       Events = VEvents [] 
                       WPFEvents = WPFEvents [] }
                 
-                let tree = WPFTree (nodeElementGrid,[])
+                let tree = WPFTree (nodeElementGrid)
                 { Tree = tree
                   Properties = VProperties []
                   Events = VEvents [] 
