@@ -77,6 +77,7 @@ module DSL =
         open DSLHelpers
         open System.Windows.Markup
         open VDom.VirtualProperty.FsWPFRepresentation
+        open System.Windows.Controls.Primitives
 
 
 
@@ -187,6 +188,11 @@ module DSL =
                 | None       -> list
             
 
+
+
+
+
+
         type WPF =    
 
             (*** ****************** ***) 
@@ -288,15 +294,90 @@ module DSL =
                       Events     = [] |> VEvents  }
                 WPFTree node               
 
+            (*** ****************** ***) 
+            (***    ToggleButton    ***) 
+            (*** ****************** ***) 
+            static member toggleButton( ?Content              : obj  
+                                       ,?IsChecked            : bool
+                                       ,?IsThreeState         : bool
+                                       ,?Click                : RoutedEventArgs -> 'Msg 
+                                       ,?Checked              : RoutedEventArgs -> 'Msg 
+                                       ,?Unchecked            : RoutedEventArgs -> 'Msg 
+                                       ,?Indeterminate        : RoutedEventArgs -> 'Msg  
+                                       ,?style                : Style   ) = 
+                           
+                let tag = Tag.NodeControl TaggedControl.ToggleButton
+                let bindedVProperties () =
+                    ([],0)
+                    |> bindVProperties Content              (fun x -> VProperty.FEProperty (ControlProperty (SingleContentProperty (SingleContentProperty.Content  x))))   
+                    |> bindVProperties IsChecked            (fun x -> VProperty.FEProperty (ControlProperty (SingleContentProperty (ButtonBaseProperty (ToggleButtonProperty (ToggleButtonProperty.IsChecked x))))))
+                    |> bindVProperties IsThreeState         (fun x -> VProperty.FEProperty (ControlProperty (SingleContentProperty (ButtonBaseProperty (ToggleButtonProperty (ToggleButtonProperty.IsThreeState x))))))       
+                    |> Style.PropagateStyle style tag 
+                    |> fst
+                let bindedVEvents () =
+                    ([],0)
+                    |> bindWPFEvents Click (fun x -> new RoutedEventHandler(x)) WPFClick                    
+                    |> bindWPFEvents Checked (fun x -> new RoutedEventHandler(x)) WPFChecked                    
+                    |> bindWPFEvents Unchecked (fun x -> new RoutedEventHandler(x)) WPFUnchecked                    
+                    |> bindWPFEvents Indeterminate (fun x -> new RoutedEventHandler(x)) WPFIndeterminate                    
+                    |> fst
+
+                let vprops  = bindedVProperties ()
+                let vevents = bindedVEvents ()
+                let node =
+                    { Tag        = tag
+                      Properties = vprops  |> VProperties
+                      WPFEvents  = vevents |> WPFEvents 
+                      Events     = [] |> VEvents  }
+                WPFTree node               
+
+
+            (*** ****************** ***) 
+            (***      RadioButton   ***) 
+            (*** ****************** ***) 
+            static member radioButton(  ?Content              : obj  
+                                       ,?IsChecked            : bool
+                                       ,?IsThreeState         : bool
+                                       ,?Click                : RoutedEventArgs -> 'Msg 
+                                       ,?Checked              : RoutedEventArgs -> 'Msg 
+                                       ,?Unchecked            : RoutedEventArgs -> 'Msg 
+                                       ,?Indeterminate        : RoutedEventArgs -> 'Msg  
+                                       ,?style                : Style   ) = 
+                           
+                let tag = Tag.NodeControl RadioButton
+                let bindedVProperties () =
+                    ([],0)
+                    |> bindVProperties Content              (fun x -> VProperty.FEProperty (ControlProperty (SingleContentProperty (SingleContentProperty.Content  x))))   
+                    |> bindVProperties IsChecked            (fun x -> VProperty.FEProperty (ControlProperty (SingleContentProperty (ButtonBaseProperty (ToggleButtonProperty (ToggleButtonProperty.IsChecked x))))))
+                    |> bindVProperties IsThreeState         (fun x -> VProperty.FEProperty (ControlProperty (SingleContentProperty (ButtonBaseProperty (ToggleButtonProperty (ToggleButtonProperty.IsThreeState x))))))       
+                    |> Style.PropagateStyle style tag 
+                    |> fst
+                let bindedVEvents () =
+                    ([],0)
+                    |> bindWPFEvents Click (fun x -> new RoutedEventHandler(x)) WPFClick                    
+                    |> bindWPFEvents Checked (fun x -> new RoutedEventHandler(x)) WPFChecked                    
+                    |> bindWPFEvents Unchecked (fun x -> new RoutedEventHandler(x)) WPFUnchecked                    
+                    |> bindWPFEvents Indeterminate (fun x -> new RoutedEventHandler(x)) WPFIndeterminate                    
+                    |> fst
+
+                let vprops  = bindedVProperties ()
+                let vevents = bindedVEvents ()
+                let node =
+                    { Tag        = tag
+                      Properties = vprops  |> VProperties
+                      WPFEvents  = vevents |> WPFEvents 
+                      Events     = [] |> VEvents  }
+                WPFTree node          
+
 
             (*** ****************** ***) 
             (***    ProgressBar     ***) 
             (*** ****************** ***) 
-
             static member progressBar( ?IsIndeterminate     : bool
                                       ,?Value               : float
                                       ,?Minimum             : float
                                       ,?Maximum             : float 
+                                      ,?ValueChanged        : RoutedPropertyChangedEventArgs<double> -> 'Msg
                                       ,?style               : Style ) = 
                            
                 let tag = Tag.NodeControl ProgressBar
@@ -308,95 +389,105 @@ module DSL =
                     |> bindVProperties Maximum              (fun x -> VProperty.FEProperty (ControlProperty (RangeProperty (RangeProperty.Maximum x))))
                     |> Style.PropagateStyle style tag 
                     |> fst
+                let bindedVEvents () =
+                    ([],0)
+                    |> bindWPFEvents ValueChanged (fun x -> new RoutedPropertyChangedEventHandler<double>(x)) WPFValueChanged
+                    |> fst
 
                 let vprops  = bindedVProperties ()
+                let vevents = bindedVEvents ()
                 let node =
                     { Tag        = tag
                       Properties = vprops  |> VProperties
-                      WPFEvents  = [] |> WPFEvents 
+                      WPFEvents  = vevents |> WPFEvents 
                       Events     = [] |> VEvents  }
                 WPFTree node             
 
+            (*** ****************** ***) 
+            (***    Slider          ***) 
+            (*** ****************** ***) 
+            static member slider( ?IsIndeterminate      : bool
+                                 ,?AutoToolTipPlacement : AutoToolTipPlacement
+                                 ,?AutoToolTipPrecision : int
+                                 ,?TickFrequency        : float 
+                                 ,?TickPlacement        : TickPlacement
+                                 ,?Ticks                : DoubleCollection
+                                 ,?Value                : float
+                                 ,?Minimum              : float
+                                 ,?Maximum              : float 
+                                 ,?ValueChanged         : RoutedPropertyChangedEventArgs<double> -> 'Msg
+                                 ,?style                : Style ) = 
+            
+                let tag = Tag.NodeControl ProgressBar
+                let bindedVProperties () =
+                    ([],0)
+                    |> bindVProperties IsIndeterminate      (fun x -> VProperty.FEProperty (ControlProperty (RangeProperty (ProgressProperty (ProgressProperty.IsIndeterminate x)))))
+                    |> bindVProperties AutoToolTipPlacement (fun x -> VProperty.FEProperty (ControlProperty (RangeProperty (SliderProperty (SliderProperty.AutoToolTipPlacement x)))))
+                    |> bindVProperties AutoToolTipPrecision (fun x -> VProperty.FEProperty (ControlProperty (RangeProperty (SliderProperty (SliderProperty.AutoToolTipPrecision x)))))
+                    |> bindVProperties TickFrequency        (fun x -> VProperty.FEProperty (ControlProperty (RangeProperty (SliderProperty (SliderProperty.TickFrequency x)))))
+                    |> bindVProperties TickPlacement        (fun x -> VProperty.FEProperty (ControlProperty (RangeProperty (SliderProperty (SliderProperty.TickPlacement x)))))
+                    |> bindVProperties Ticks                (fun x -> VProperty.FEProperty (ControlProperty (RangeProperty (SliderProperty (SliderProperty.Ticks x)))))
+                    |> bindVProperties Value                (fun x -> VProperty.FEProperty (ControlProperty (RangeProperty (RangeProperty.Value x))))
+                    |> bindVProperties Minimum              (fun x -> VProperty.FEProperty (ControlProperty (RangeProperty (RangeProperty.Minimum x))))                        
+                    |> bindVProperties Maximum              (fun x -> VProperty.FEProperty (ControlProperty (RangeProperty (RangeProperty.Maximum x))))
+                    |> Style.PropagateStyle style tag 
+                    |> fst
+
+                let bindedVEvents () =
+                    ([],0)
+                    |> bindWPFEvents ValueChanged (fun x -> new RoutedPropertyChangedEventHandler<double>(x)) WPFValueChanged
+                    |> fst
+
+                let vprops  = bindedVProperties ()
+                let vevents = bindedVEvents ()
+                let node =
+                    { Tag        = tag
+                      Properties = vprops  |> VProperties
+                      WPFEvents  = vevents |> WPFEvents 
+                      Events     = [] |> VEvents  }
+                WPFTree node             
+
+            (*** ****************** ***) 
+            (***    ComboBox        ***) 
+            (*** ****************** ***) 
+            static member comboBox( children                    : WPFTree<'Msg> list
+                                   ,?IsEditable                 : bool
+                                   ,?Text                       : string
+                                   ,?SelectedItem               : obj
+                                   ,?IsTextSearchEnabled        : bool
+                                   ,?IsTextSearchCaseSensitive  : bool
+                                   ,?SelectionChanged           : SelectionChangedEventArgs -> 'Msg
+                                   ,?style                      : Style ) = 
 
 
-            //(*** ****************** ***) 
-            //(***    ComboBox        ***) 
-            //(*** ****************** ***) 
-            ////let c = new System.Windows.Controls.ComboBox()
-            ////let ci = new System.Windows.Controls.ComboBoxItem()
-            ////ci.conten
-            ////c.SelectionChanged
+                let tag = Tag.NodeItems (ComboBox,children)
+                let bindedVProperties () =
+                    ([],0)
+                    |> bindVProperties IsEditable                   (fun x -> VProperty.FEProperty (ControlProperty (CollectionContentProperty (SelectableProperty (ComboBoxProperty (ComboBoxProperty.IsEditable x))))))
+                    |> bindVProperties Text                         (fun x -> VProperty.FEProperty (ControlProperty (CollectionContentProperty (SelectableProperty (ComboBoxProperty (ComboBoxProperty.Text x))))))
+                    |> bindVProperties SelectedItem                 (fun x -> VProperty.FEProperty (ControlProperty (CollectionContentProperty (SelectableProperty (SelectableProperty.SelectedItem x)))))
+                    |> bindVProperties IsTextSearchEnabled          (fun x -> VProperty.FEProperty (ControlProperty (CollectionContentProperty (CollectionContentProperty.IsTextSearchEnabled x))))
+                    |> bindVProperties IsTextSearchCaseSensitive    (fun x -> VProperty.FEProperty (ControlProperty (CollectionContentProperty (CollectionContentProperty.IsTextSearchCaseSensitive x))))
+                    |> Style.PropagateStyle style tag 
+                    |> fst
 
-            //static member comboBox( ?Column              : int 
-            //                       ,?ColumnSpan          : int 
-            //                       ,?Row                 : int 
-            //                       ,?RowSpan             : int 
-            //                       ,?Background          : Brush 
-            //                       ,?BorderBrush         : Brush 
-            //                       ,?BorderThickness     : Thickness 
-            //                       ,?FontFamily          : FontFamily 
-            //                       ,?FontSize            : float  
-            //                       ,?FontWeight          : FontWeight 
-            //                       ,?Foreground          : Brush 
-            //                       ,?IsEnabled           : bool
-            //                       ,?Width               : float 
-            //                       ,?Height              : float 
-            //                       ,?Opacity             : float 
-            //                       ,?HorizontalAlignment : HorizontalAlignment 
-            //                       ,?Margin              : Thickness 
-            //                       ,?VerticalAlignment   : VerticalAlignment 
-            //                       ,?Visibility          : Visibility  
-            //                       ,?IsIndeterminate     : bool
-            //                       ,?Value               : float
-            //                       ,?Minimum             : float
-            //                       ,?Maximum             : float 
-            //                       ,?SelectionChanged    : SelectionChangedEventArgs -> 'Msg  ) = 
-                           
-            //    let bindedVProperties () =
-            //        ([],0)
-            //        |> bindVProperties Column               VProperty.Column         
-            //        |> bindVProperties ColumnSpan           VProperty.ColumnSpan         
-            //        |> bindVProperties Row                  VProperty.Row
-            //        |> bindVProperties RowSpan              VProperty.RowSpan         
-            //        |> bindVProperties Background           VProperty.Background         
-            //        |> bindVProperties BorderBrush          VProperty.BorderBrush        
-            //        |> bindVProperties BorderThickness      VProperty.BorderThickness    
-            //        |> bindVProperties FontFamily           VProperty.FontFamily         
-            //        |> bindVProperties FontSize             VProperty.FontSize          
-            //        |> bindVProperties FontWeight           VProperty.FontWeight         
-            //        |> bindVProperties Foreground           VProperty.Foreground         
-            //        |> bindVProperties IsEnabled            VProperty.IsEnabled          
-            //        |> bindVProperties Width                VProperty.Width           
-            //        |> bindVProperties Height               VProperty.Height             
-            //        |> bindVProperties Opacity              VProperty.Opacity            
-            //        |> bindVProperties HorizontalAlignment  VProperty.HorizontalAlignment
-            //        |> bindVProperties Margin               VProperty.Margin 
-            //        |> bindVProperties VerticalAlignment    VProperty.VerticalAlignment  
-            //        |> bindVProperties Visibility           VProperty.Visibility                        
-            //        |> bindVProperties IsIndeterminate      VProperty.IsIndeterminate                        
-            //        |> bindVProperties Value                VProperty.Value                        
-            //        |> bindVProperties Minimum              VProperty.Minimum                        
-            //        |> bindVProperties Maximum              VProperty.Maximum                        
-            //        |> fst
+                let bindedVEvents () =
+                    ([],0)
+                    |> bindWPFEvents SelectionChanged (fun x -> new SelectionChangedEventHandler(x)) WPFSelectionChanged
+                    |> fst
 
-            //    let bindedVEvents () =
-            //        ([],0)
-            //        |> bindWPFEvents SelectionChanged (fun x -> new SelectionChangedEventHandler(x)) WPFSelectionChanged
-            //        |> fst
-
-            //    let vprops  = bindedVProperties ()
-            //    let vevents = bindedVEvents ()
-            //    let node =
-            //        { Tag        = Tag.Control ComboBox
-            //          Properties = vprops  |> VProperties
-            //          WPFEvents  = vevents |> WPFEvents 
-            //          Events     = [] |> VEvents  }
-            //    WPFTree (node, [])                
+                let vprops  = bindedVProperties ()
+                let vevents = bindedVEvents ()
+                let node =
+                    { Tag        = tag
+                      Properties = vprops  |> VProperties
+                      WPFEvents  = vevents |> WPFEvents 
+                      Events     = [] |> VEvents  }
+                WPFTree node       
 
             (*** ****************** ***) 
             (***    TextBox         ***) 
             (*** ****************** ***) 
-
             static member textBox( ?CanEnter                    : bool
                                   ,?CanTab                      : bool
                                   ,?Language                    : XmlLanguage
@@ -479,6 +570,86 @@ module DSL =
                 WPFTree node
 
 
+            (*** ****************** ***) 
+            (***      Line          ***) 
+            (*** ****************** ***) 
+            static member line( ?Fill               : Brush
+                               ,?Stroke             : Brush
+                               ,?StrokeThickness    : float
+                               ,?Coordinate         : LineCoordinate
+                               ,?style              : Style ) =
+                                     
+                let tag = Tag.NodeControl Line
+                let bindedVProperties () =
+                    ([],0)
+                    |> bindVProperties  Fill            (fun x -> VProperty.FEProperty (ShapeProperty (ShapeProperty.Fill x)))
+                    |> bindVProperties  Stroke          (fun x -> VProperty.FEProperty (ShapeProperty (ShapeProperty.Stroke x)))
+                    |> bindVProperties  StrokeThickness (fun x -> VProperty.FEProperty (ShapeProperty (ShapeProperty.StrokeThickness x)))
+                    |> bindVProperties  Coordinate      (fun x -> VProperty.FEProperty (ShapeProperty (LineProperty (LineProperty.LineCoordinate x))))
+                    |> Style.PropagateStyle style tag 
+                    |> fst
+
+                let vprops  = bindedVProperties ()
+                let node =
+                    { Tag        = tag
+                      Properties = vprops   |> VProperties
+                      WPFEvents  = [] |> WPFEvents 
+                      Events     = [] |> VEvents  }
+                WPFTree node
+
+            (*** ****************** ***) 
+            (***      PolyLine      ***) 
+            (*** ****************** ***) 
+            static member polyline( ?Fill               : Brush
+                                   ,?Stroke             : Brush
+                                   ,?StrokeThickness    : float
+                                   ,?Points             : Coordinate list
+                                   ,?style              : Style ) =
+                                     
+                let tag = Tag.NodeControl Polyline
+                let bindedVProperties () =
+                    ([],0)
+                    |> bindVProperties  Fill            (fun x -> VProperty.FEProperty (ShapeProperty (ShapeProperty.Fill x)))
+                    |> bindVProperties  Stroke          (fun x -> VProperty.FEProperty (ShapeProperty (ShapeProperty.Stroke x)))
+                    |> bindVProperties  StrokeThickness (fun x -> VProperty.FEProperty (ShapeProperty (ShapeProperty.StrokeThickness x)))
+                    |> bindVProperties  Points          (fun x -> VProperty.FEProperty (ShapeProperty (PolyLineProperty (PolyLineProperty.Points x))))
+                    |> Style.PropagateStyle style tag 
+                    |> fst
+
+                let vprops  = bindedVProperties ()
+                let node =
+                    { Tag        = tag
+                      Properties = vprops   |> VProperties
+                      WPFEvents  = [] |> WPFEvents 
+                      Events     = [] |> VEvents  }
+                WPFTree node
+
+            (*** ****************** ***) 
+            (***      Rectangle     ***) 
+            (*** ****************** ***) 
+            static member rectangle( ?Fill              : Brush
+                                    ,?Stroke            : Brush
+                                    ,?StrokeThickness   : float
+                                    ,?Radius            : Radius
+                                    ,?style             : Style ) =
+                                     
+                let tag = Tag.NodeControl Rectangle
+                let bindedVProperties () =
+                    ([],0)
+                    |> bindVProperties  Fill            (fun x -> VProperty.FEProperty (ShapeProperty (ShapeProperty.Fill x)))
+                    |> bindVProperties  Stroke          (fun x -> VProperty.FEProperty (ShapeProperty (ShapeProperty.Stroke x)))
+                    |> bindVProperties  StrokeThickness (fun x -> VProperty.FEProperty (ShapeProperty (ShapeProperty.StrokeThickness x)))
+                    |> bindVProperties  Radius          (fun x -> VProperty.FEProperty (ShapeProperty (RectangleProperty (RectangleProperty.Radius x))))
+                    |> Style.PropagateStyle style tag 
+                    |> fst
+
+                let vprops  = bindedVProperties ()
+                let node =
+                    { Tag        = tag
+                      Properties = vprops   |> VProperties
+                      WPFEvents  = [] |> WPFEvents 
+                      Events     = [] |> VEvents  }
+                WPFTree node
 
 
             (*** ****************** ***) 
@@ -499,7 +670,7 @@ module DSL =
 
                 // This is a fake tag to allow style construction for a window 
                 // a window is a control like a button
-                let tag = Tag.NodeControl TaggedControl.Button
+                let fakeTag = Tag.NodeControl TaggedControl.Button
 
                 let bindedVProperties () =
                     ([],0)
@@ -508,7 +679,7 @@ module DSL =
                     |> bindVProperties  Title               (fun x -> VProperty.WindowProperty (WindowProperty.Title x))
                     |> bindVProperties  ResizeMode          (fun x -> VProperty.WindowProperty (WindowProperty.ResizeMode x))
                     |> bindVProperties  AllowsTransparency  (fun x -> VProperty.WindowProperty (WindowProperty.AllowsTransparency x))         
-                    |> Style.PropagateStyle style tag 
+                    |> Style.PropagateStyle style fakeTag 
                     |> fst
 
                 let bindedVEvents () =

@@ -148,30 +148,16 @@ module Processor =
                     | Success model ->
                         let program = { program with model = model }
 
-                        printfn "\n===================\n" 
-
-                        let sw = System.Diagnostics.Stopwatch()
-                        sw.Start()
-
                         let wpfWindow = program.funcs.view (program.model)
-                        printfn "View: %A" (sw.Elapsed) 
-                        sw.Restart()
 
                         let newView = wpfWindow.VirtualConvert(inbox.Post)
-                        printfn "VirtualConvert: %A" (sw.Elapsed) 
-                        sw.Restart()
 
                         let updates = treeDiff oldView newView
-                        printfn "treeDiff: %A" (sw.Elapsed) 
-                        sw.Restart()
 
                         do! Async.SwitchToContext sync
                         updateWindow window updates
                         do! Async.SwitchToThreadPool ()
 
-                        printfn "updateWindow: %A" (sw.Elapsed) 
-                        sw.Restart()
-                
                         return! aux program false newView window sync
                     | Error error ->
                         return! program.funcs.errorHandler window sync error

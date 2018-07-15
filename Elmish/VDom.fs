@@ -20,7 +20,20 @@ module VDom =
                 { Height : int
                   Unit   : GridUnitType }
 
-        
+            type LineCoordinate =
+                {   X1 : float
+                    Y1 : float
+                    X2 : float
+                    Y2 : float  }
+
+            type Coordinate =
+                {   X : float
+                    Y : float   }
+                
+            type Radius =
+                {   X : float
+                    Y : float   }
+
         open FsWPFRepresentation
 
         type UIElementStyle =
@@ -82,6 +95,8 @@ module VDom =
             | TickFrequency of float
             | TickPlacement of TickPlacement
             | Ticks of DoubleCollection
+            | AutoToolTipPlacement of AutoToolTipPlacement
+            | AutoToolTipPrecision of int
 
         type RangeProperty =
             | ProgressProperty of ProgressProperty
@@ -157,12 +172,29 @@ module VDom =
             | TextTrimming of TextTrimming 
             | TextWrapping of TextWrapping
 
+        type LineProperty =
+            | LineCoordinate of LineCoordinate
+
+        type PolyLineProperty =
+            | Points of Coordinate list
+
+        type RectangleProperty =
+            | Radius of Radius
+
+        type ShapeProperty =
+            | Fill of Brush
+            | Stroke of Brush
+            | StrokeThickness of float
+            | LineProperty of LineProperty
+            | PolyLineProperty of PolyLineProperty
+            | RectangleProperty of RectangleProperty
 
         type FEProperty =
             | ControlProperty of ControlProperty
             | PanelProperty of PanelProperty
+            | ShapeProperty of ShapeProperty
             | TextBlockProperty of TextBlockProperty
-        
+
         type WindowProperty =
             | WindowStyle         of WindowStyle
             | WindowState         of WindowState
@@ -203,7 +235,11 @@ module VDom =
         type CollectionContentEvent =
             | SelectableEvent of SelectableEvent
 
+        type RangeBaseEvent =
+            | ValueChanged of RoutedPropertyChangedEventHandler<double>
+
         type ControlEvent =
+            | RangeBaseEvent of RangeBaseEvent
             | TextBoxEvent of TextBoxEvent 
             | SingleContentEvent of SingleContentEvent
             | CollectionContentEvent of CollectionContentEvent
@@ -231,6 +267,7 @@ module VDom =
         open VirtualProperty
         open VirtualEvent
         open System.Windows.Controls
+        open System.Windows.Shapes
 
 
 
@@ -242,16 +279,18 @@ module VDom =
         type WPFLambda<'Msg,'args,'handler> = ('args -> 'Msg) * ((obj -> 'args -> unit) -> 'handler)
 
         type WPFEvent<'Msg> = 
-            | WPFClick          of WPFLambda<'Msg,RoutedEventArgs,RoutedEventHandler>
-            | WPFTextChanged    of WPFLambda<'Msg,TextChangedEventArgs,TextChangedEventHandler> 
-            | WPFActivated      of WPFLambda<'Msg,EventArgs,EventHandler>
-            | WPFClosed         of WPFLambda<'Msg,EventArgs,EventHandler>
-            | WPFClosing        of WPFLambda<'Msg,CancelEventArgs,CancelEventHandler>
-            | WPFDeactivated    of WPFLambda<'Msg,EventArgs,EventHandler>
-            | WPFLoaded         of WPFLambda<'Msg,RoutedEventArgs,RoutedEventHandler>
-            | WPFChecked        of WPFLambda<'Msg,RoutedEventArgs,RoutedEventHandler>
-            | WPFUnchecked      of WPFLambda<'Msg,RoutedEventArgs,RoutedEventHandler>
-            | WPFIndeterminate  of WPFLambda<'Msg,RoutedEventArgs,RoutedEventHandler>
+            | WPFClick              of WPFLambda<'Msg,RoutedEventArgs,RoutedEventHandler>
+            | WPFTextChanged        of WPFLambda<'Msg,TextChangedEventArgs,TextChangedEventHandler> 
+            | WPFActivated          of WPFLambda<'Msg,EventArgs,EventHandler>
+            | WPFClosed             of WPFLambda<'Msg,EventArgs,EventHandler>
+            | WPFClosing            of WPFLambda<'Msg,CancelEventArgs,CancelEventHandler>
+            | WPFDeactivated        of WPFLambda<'Msg,EventArgs,EventHandler>
+            | WPFLoaded             of WPFLambda<'Msg,RoutedEventArgs,RoutedEventHandler>
+            | WPFChecked            of WPFLambda<'Msg,RoutedEventArgs,RoutedEventHandler>
+            | WPFUnchecked          of WPFLambda<'Msg,RoutedEventArgs,RoutedEventHandler>
+            | WPFIndeterminate      of WPFLambda<'Msg,RoutedEventArgs,RoutedEventHandler>
+            | WPFValueChanged       of WPFLambda<'Msg,RoutedPropertyChangedEventArgs<double>,RoutedPropertyChangedEventHandler<double>>
+            | WPFSelectionChanged   of WPFLambda<'Msg,SelectionChangedEventArgs,SelectionChangedEventHandler>
 
         type WPFEvents<'Msg> = WPFEvents of (WPFEvent<'Msg>*int) list    // Temporary, making the events independent of the dispatcher
 
@@ -263,13 +302,17 @@ module VDom =
             
         type TaggedControl  =
             | Button 
-            | TextBlock
+            | ToggleButton
             | CheckBox
+            | RadioButton
+            | TextBlock
             | ProgressBar
             | TextBox 
+            | Slider
+            | Line
+            | Rectangle
+            | Polyline
 
-            //| Slider
-            //| RadioButton
         type TaggedItems =
             | ComboBox
     
@@ -296,6 +339,7 @@ module VDom =
     module VirtualPropertyDefaultValues =
         open System
         open VirtualProperty
+        open FsWPFRepresentation
         open System.Windows.Controls
         open System.Windows.Controls.Primitives
         open System.Windows.Markup
@@ -375,9 +419,11 @@ module VDom =
         type SliderProperty  with
             member x.DefaultValue =
                 match x with
-                | TickFrequency _ -> TickFrequency                  1.0
-                | TickPlacement _ -> SliderProperty.TickPlacement   TickPlacement.None 
-                | Ticks         _ -> Ticks                          null
+                | TickFrequency         _ -> TickFrequency                          1.0
+                | TickPlacement         _ -> SliderProperty.TickPlacement           TickPlacement.None 
+                | Ticks                 _ -> Ticks                                  null
+                | AutoToolTipPlacement  _ -> SliderProperty.AutoToolTipPlacement    AutoToolTipPlacement.None 
+                | AutoToolTipPrecision  _ -> SliderProperty.AutoToolTipPrecision    0
 
         type RangeProperty with
             member x.DefaultValue =
@@ -476,12 +522,39 @@ module VDom =
                 | TextWrapping  _ -> TextWrapping (TextWrapping.NoWrap)
 
 
+        type LineProperty with
+            member x.DefaultValue =
+                match x with 
+                | LineCoordinate _ -> {X1 = 0.0 ; Y1 = 0.0 ; X2 = 0.0 ; Y2 = 0.0} |> LineCoordinate
+
+        type PolyLineProperty with
+            member x.DefaultValue =
+                match x with 
+                | Points _ -> [] |> Points
+
+        type RectangleProperty with
+            member x.DefaultValue =
+                match x with 
+                | Radius _ -> {X = 0.0 ; Y = 0.0 } |> Radius
+
+        type ShapeProperty with
+            member x.DefaultValue =
+                match x with 
+                | Fill              _   -> Fill            null               
+                | Stroke            _   -> Stroke          null
+                | StrokeThickness   _   -> StrokeThickness 0.
+                | LineProperty      lp  -> lp.DefaultValue  |> LineProperty
+                | PolyLineProperty  plp -> plp.DefaultValue |> PolyLineProperty
+                | RectangleProperty rp  -> rp.DefaultValue  |> RectangleProperty
+
+
         type FEProperty with
             member x.DefaultValue =
                 match x with 
                 | ControlProperty   cp  -> cp.DefaultValue |> ControlProperty
                 | PanelProperty     pp  -> pp.DefaultValue |> PanelProperty
                 | TextBlockProperty tbp -> tbp.DefaultValue |> TextBlockProperty
+                | ShapeProperty     sp  -> sp.DefaultValue |> ShapeProperty
 
         type WindowProperty with
             member x.DefaultValue =
@@ -539,6 +612,7 @@ module VDom =
         module VPropertyUpdate =   
             open Convert
             open VirtualProperty
+            open System.Windows.Shapes
 
             type WPFObjectUpdate =
                 | UIElementUpdate           of (UIElement -> unit)
@@ -559,6 +633,11 @@ module VDom =
                 | TextBlockUpdate           of (TextBlock -> unit)
                 | GridUpdate                of (Grid -> unit)
                 | WindowUpdate              of (Window -> unit)
+                | ShapeUpdate               of (Shape -> unit)
+                | LineUpdate                of (Line -> unit)
+                | PolyLineUpdate            of (Polyline -> unit)
+                | RectangeUpdate            of (Rectangle -> unit)
+
 
             type UIElementStyle with
                 member x.PropertyUpdate() =
@@ -633,9 +712,11 @@ module VDom =
             type SliderProperty  with
                 member x.PropertyUpdate() =
                     match x with
-                    | TickFrequency prop -> SliderUpdate( fun s -> s.TickFrequency <- prop)
-                    | TickPlacement prop -> SliderUpdate( fun s -> s.TickPlacement <- prop)
-                    | Ticks         prop -> SliderUpdate( fun s -> s.Ticks <- prop)
+                    | TickFrequency         prop -> SliderUpdate( fun s -> s.TickFrequency <- prop)
+                    | TickPlacement         prop -> SliderUpdate( fun s -> s.TickPlacement <- prop)
+                    | Ticks                 prop -> SliderUpdate( fun s -> s.Ticks <- prop)
+                    | AutoToolTipPlacement  prop -> SliderUpdate( fun s -> s.AutoToolTipPlacement <- prop)
+                    | AutoToolTipPrecision  prop -> SliderUpdate( fun s -> s.AutoToolTipPrecision <- prop)
 
             type RangeProperty with
                 member x.PropertyUpdate() =
@@ -732,6 +813,37 @@ module VDom =
                     | TextTrimming  prop -> TextBlockUpdate( fun tb -> tb.TextTrimming <- prop)
                     | TextWrapping  prop -> TextBlockUpdate( fun tb -> tb.TextWrapping <- prop)
 
+            type LineProperty with
+                member x.PropertyUpdate() =
+                    match x with 
+                    | LineCoordinate prop -> 
+                        let update (l:Line) =
+                            l.X1 <- prop.X1
+                            l.Y1 <- prop.Y1
+                            l.X2 <- prop.X2
+                            l.Y2 <- prop.Y2
+                        LineUpdate update 
+
+            type PolyLineProperty with
+                member x.PropertyUpdate() =
+                    match x with 
+                    | Points prop -> PolyLineUpdate ( fun pl -> prop |> List.iter(fun p -> pl.Points.Add(new Point(p.X,p.Y))) )
+
+            type RectangleProperty with
+                member x.PropertyUpdate() =
+                    match x with 
+                    | Radius prop -> RectangeUpdate( fun r -> r.RadiusX <- prop.X ; r.RadiusY <- prop.Y )
+
+            type ShapeProperty with
+                member x.PropertyUpdate() =
+                    match x with 
+                    | Fill              prop    -> ShapeUpdate( fun s -> s.Fill <- prop)
+                    | Stroke            prop    -> ShapeUpdate( fun s -> s.Stroke <- prop)
+                    | StrokeThickness   prop    -> ShapeUpdate( fun s -> s.StrokeThickness <- prop)
+                    | LineProperty      lp      -> lp.PropertyUpdate() 
+                    | PolyLineProperty  plp     -> plp.PropertyUpdate()
+                    | RectangleProperty rp      -> rp.PropertyUpdate() 
+
 
             type FEProperty with
                 member x.PropertyUpdate() =
@@ -739,6 +851,7 @@ module VDom =
                     | ControlProperty   cp  -> cp.PropertyUpdate()
                     | PanelProperty     pp  -> pp.PropertyUpdate()
                     | TextBlockProperty tbp -> tbp.PropertyUpdate()
+                    | ShapeProperty     sp  -> sp.PropertyUpdate()
 
             type WindowProperty with
                 member x.PropertyUpdate() =
@@ -781,6 +894,10 @@ module VDom =
                     | TextBlockUpdate           update -> update (uiElement :?> TextBlock)
                     | GridUpdate                update -> update (uiElement :?> Grid)
                     | WindowUpdate              update -> update (uiElement :?> Window)
+                    | ShapeUpdate               update -> update (uiElement :?> Shape)
+                    | LineUpdate                update -> update (uiElement :?> Line)
+                    | PolyLineUpdate            update -> update (uiElement :?> Polyline)
+                    | RectangeUpdate            update -> update (uiElement :?> Rectangle)
                   )
 
 
@@ -793,6 +910,7 @@ module VDom =
         module EventHandling =
             open VPropertyUpdate
             open VirtualEvent
+            open System.Windows.Shapes
 
 
 
@@ -850,14 +968,24 @@ module VDom =
                     match x with
                     | SelectableEvent s -> s.EventDispose()
 
+            type RangeBaseEvent with           
+                member x.EventAdd() =     
+                    match x with
+                    | ValueChanged handler -> RangeBaseUpdate( fun rb -> rb.ValueChanged.AddHandler handler)
+                member x.EventDispose() =     
+                    match x with
+                    | ValueChanged handler -> RangeBaseUpdate( fun rb -> rb.ValueChanged.RemoveHandler handler)
+
             type ControlEvent with           
                 member x.EventAdd() =     
                     match x with
+                    | RangeBaseEvent            rb -> rb.EventAdd()
                     | TextBoxEvent              tb -> tb.EventAdd()
                     | SingleContentEvent        sc -> sc.EventAdd()
                     | CollectionContentEvent    cc -> cc.EventAdd()
                 member x.EventDispose() =     
                     match x with
+                    | RangeBaseEvent            rb -> rb.EventDispose()
                     | TextBoxEvent              tb -> tb.EventDispose()
                     | SingleContentEvent        sc -> sc.EventDispose()
                     | CollectionContentEvent    cc -> cc.EventDispose()
@@ -922,6 +1050,10 @@ module VDom =
                     | TextBlockUpdate           update -> update (uiElement :?> TextBlock)
                     | GridUpdate                update -> update (uiElement :?> Grid)
                     | WindowUpdate              update -> update (uiElement :?> Window)
+                    | ShapeUpdate               update -> update (uiElement :?> Shape)
+                    | LineUpdate                update -> update (uiElement :?> Line)
+                    | PolyLineUpdate            update -> update (uiElement :?> Polyline)
+                    | RectangeUpdate            update -> update (uiElement :?> Rectangle)
                     )
 
             let internal addHandlerEvents events (uiElement : UIElement) = handleEvents (fun vevent -> vevent.EventAdd()) events uiElement
@@ -938,6 +1070,7 @@ module VDom =
         module VCreation = 
             open EventHandling
             open VPropertyUpdate
+            open System.Windows.Shapes
 
             type TaggedContainer with
                 member x.Create() =
@@ -948,12 +1081,18 @@ module VDom =
             type TaggedControl  with
                 member x.Create() =
                     match x with
-                    | Button      -> new Button()     :> UIElement
-                    | TextBlock   -> new TextBlock()  :> UIElement
-                    | CheckBox    -> new CheckBox()   :> UIElement
-                    | ProgressBar -> new ProgressBar()    :> UIElement
-                    | TextBox     -> new TextBox()    :> UIElement
-            
+                    | Button      -> new Button()       :> UIElement
+                    | CheckBox    -> new CheckBox()     :> UIElement
+                    | ToggleButton-> new ToggleButton() :> UIElement
+                    | RadioButton -> new RadioButton()  :> UIElement
+                    | TextBlock   -> new TextBlock()    :> UIElement
+                    | ProgressBar -> new ProgressBar()  :> UIElement
+                    | TextBox     -> new TextBox()      :> UIElement
+                    | Slider      -> new Slider()       :> UIElement
+                    | Line        -> new Line()         :> UIElement
+                    | Rectangle   -> new Rectangle()    :> UIElement
+                    | Polyline    -> new Polyline()     :> UIElement
+
             type TaggedItems with
                 member x.Create() =
                     match x with
@@ -1043,16 +1182,18 @@ module VDom =
                             dispatch msg )
                         |> handlerLambda
                     match x with
-                    | WPFClick         (getMsg,handlerLambda)    -> buildHandler getMsg handlerLambda |> Click          |> ButtonBaseEvent |> SingleContentEvent |> ControlEvent |> FEEvent
-                    | WPFTextChanged   (getMsg,handlerLambda)    -> buildHandler getMsg handlerLambda |> TextChanged    |> TextBoxEvent |> ControlEvent |> FEEvent
-                    | WPFActivated     (getMsg,handlerLambda)    -> buildHandler getMsg handlerLambda |> Activated      |> WindowEvent
-                    | WPFClosed        (getMsg,handlerLambda)    -> buildHandler getMsg handlerLambda |> Closed         |> WindowEvent
-                    | WPFClosing       (getMsg,handlerLambda)    -> buildHandler getMsg handlerLambda |> Closing        |> WindowEvent
-                    | WPFDeactivated   (getMsg,handlerLambda)    -> buildHandler getMsg handlerLambda |> Deactivated    |> WindowEvent
-                    | WPFLoaded        (getMsg,handlerLambda)    -> buildHandler getMsg handlerLambda |> Loaded         |> WindowEvent
-                    | WPFChecked       (getMsg,handlerLambda)    -> buildHandler getMsg handlerLambda |> Checked        |> ToggleButtonEvent |> ButtonBaseEvent |> SingleContentEvent |> ControlEvent |> FEEvent
-                    | WPFUnchecked     (getMsg,handlerLambda)    -> buildHandler getMsg handlerLambda |> Unchecked      |> ToggleButtonEvent |> ButtonBaseEvent |> SingleContentEvent |> ControlEvent |> FEEvent
-                    | WPFIndeterminate (getMsg,handlerLambda)    -> buildHandler getMsg handlerLambda |> Indeterminate  |> ToggleButtonEvent |> ButtonBaseEvent |> SingleContentEvent |> ControlEvent |> FEEvent
+                    | WPFClick              (getMsg,handlerLambda)  -> buildHandler getMsg handlerLambda |> Click          |> ButtonBaseEvent |> SingleContentEvent |> ControlEvent |> FEEvent
+                    | WPFTextChanged        (getMsg,handlerLambda)  -> buildHandler getMsg handlerLambda |> TextChanged    |> TextBoxEvent |> ControlEvent |> FEEvent
+                    | WPFActivated          (getMsg,handlerLambda)  -> buildHandler getMsg handlerLambda |> Activated      |> WindowEvent
+                    | WPFClosed             (getMsg,handlerLambda)  -> buildHandler getMsg handlerLambda |> Closed         |> WindowEvent
+                    | WPFClosing            (getMsg,handlerLambda)  -> buildHandler getMsg handlerLambda |> Closing        |> WindowEvent
+                    | WPFDeactivated        (getMsg,handlerLambda)  -> buildHandler getMsg handlerLambda |> Deactivated    |> WindowEvent
+                    | WPFLoaded             (getMsg,handlerLambda)  -> buildHandler getMsg handlerLambda |> Loaded         |> WindowEvent
+                    | WPFChecked            (getMsg,handlerLambda)  -> buildHandler getMsg handlerLambda |> Checked        |> ToggleButtonEvent |> ButtonBaseEvent |> SingleContentEvent |> ControlEvent |> FEEvent
+                    | WPFUnchecked          (getMsg,handlerLambda)  -> buildHandler getMsg handlerLambda |> Unchecked      |> ToggleButtonEvent |> ButtonBaseEvent |> SingleContentEvent |> ControlEvent |> FEEvent
+                    | WPFIndeterminate      (getMsg,handlerLambda)  -> buildHandler getMsg handlerLambda |> Indeterminate  |> ToggleButtonEvent |> ButtonBaseEvent |> SingleContentEvent |> ControlEvent |> FEEvent
+                    | WPFValueChanged       (getMsg,handlerLambda)  -> buildHandler getMsg handlerLambda |> ValueChanged   |> RangeBaseEvent |> ControlEvent |> FEEvent
+                    | WPFSelectionChanged   (getMsg,handlerLambda)  -> buildHandler getMsg handlerLambda |> SelectionChanged |> SelectableEvent |> CollectionContentEvent |> ControlEvent |> FEEvent
 
             type WPFEvents<'Msg> with 
                 member x.VirtualConvert(dispatch) : VEvents =
