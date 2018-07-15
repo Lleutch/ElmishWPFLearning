@@ -156,6 +156,7 @@ module VDom =
         type StackPanelProperty =
             | CanHorizontallyScroll of bool
             | CanVerticallyScroll   of bool
+            | Orientation of Orientation
 
         type GridProperty =
             | ColumnDefinitions   of ColDef list
@@ -413,8 +414,8 @@ module VDom =
         type ProgressProperty with
             member x.DefaultValue =
                 match x with
-                | IsIndeterminate _ -> IsIndeterminate              false
-                | Orientation     _ -> ProgressProperty.Orientation Orientation.Horizontal
+                | IsIndeterminate               _ -> IsIndeterminate              false
+                | ProgressProperty.Orientation  _ -> ProgressProperty.Orientation Orientation.Horizontal
 
         type SliderProperty  with
             member x.DefaultValue =
@@ -499,6 +500,7 @@ module VDom =
                 match x with 
                 | CanHorizontallyScroll _ -> CanHorizontallyScroll false
                 | CanVerticallyScroll   _ -> CanVerticallyScroll false
+                | StackPanelProperty.Orientation _ -> StackPanelProperty.Orientation (Orientation.Vertical)
 
         type GridProperty with
             member x.DefaultValue =
@@ -706,8 +708,8 @@ module VDom =
             type ProgressProperty with
                 member x.PropertyUpdate() =
                     match x with
-                    | IsIndeterminate prop -> ProgressBarUpdate( fun pb -> pb.IsIndeterminate <- prop)
-                    | Orientation     prop -> ProgressBarUpdate( fun pb -> pb.Orientation <- prop)
+                    | IsIndeterminate               prop -> ProgressBarUpdate( fun pb -> pb.IsIndeterminate <- prop)
+                    | ProgressProperty.Orientation  prop -> ProgressBarUpdate( fun pb -> pb.Orientation <- prop)
 
             type SliderProperty  with
                 member x.PropertyUpdate() =
@@ -789,8 +791,9 @@ module VDom =
             type StackPanelProperty with
                 member x.PropertyUpdate() =
                     match x with 
-                    | CanHorizontallyScroll prop -> StackPanelUpdate( fun sp -> sp.CanHorizontallyScroll <- prop)
-                    | CanVerticallyScroll   prop -> StackPanelUpdate( fun sp -> sp.CanVerticallyScroll <- prop)
+                    | CanHorizontallyScroll             prop -> StackPanelUpdate( fun sp -> sp.CanHorizontallyScroll <- prop)
+                    | CanVerticallyScroll               prop -> StackPanelUpdate( fun sp -> sp.CanVerticallyScroll <- prop)
+                    | StackPanelProperty.Orientation    prop -> StackPanelUpdate( fun sp -> sp.Orientation <- prop)
 
             type GridProperty with
                 member x.PropertyUpdate() =

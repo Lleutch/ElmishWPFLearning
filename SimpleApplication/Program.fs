@@ -7,6 +7,8 @@ open Elmish.ProgramTypes
 open Elmish.Program
 
 module MVU =
+    open System.Windows.Media
+    open Elmish.VDom.VirtualProperty.FsWPFRepresentation
 
     type ModelError =
         | TooManyClicks
@@ -90,6 +92,27 @@ module MVU =
                     style = new Style(Row = 4) ,
                     Children = 
                         [ yield WPF.checkBox()
+                          yield WPF.rectangle( Fill = Brushes.Black
+                                              ,Stroke = Brushes.Red
+                                              ,StrokeThickness = 10.0
+                                              ,style = 
+                                                new Style( Height = 100. ,
+                                                           Width  = 100.)  
+                                             )
+                          yield WPF.line( Stroke = Brushes.Red
+                                         ,StrokeThickness = 3.5
+                                         ,Coordinate = {X1 = 0.0; Y1 = 0.0; X2 = 0.0; Y2 = 50.0}
+                                        )
+                          yield WPF.polyline( Stroke = Brushes.Blue
+                                             ,StrokeThickness = 3.5
+                                             ,Points = 
+                                                [   
+                                                    {X = 50.0 ; Y = 0.0}
+                                                    {X = 50.0 ; Y = 50.0}
+                                                    {X = 0.0 ; Y = 0.0}
+                                                    {X = 0.0 ; Y = 50.0}
+                                                ]
+                                             )
                           yield WPF.textBox(Text = "What's up")]
                    )
 
@@ -102,7 +125,7 @@ module MVU =
                                    {Height=3;Unit=GridUnitType.Star}
                                    {Height=3;Unit=GridUnitType.Star}
                                    {Height=3;Unit=GridUnitType.Star}
-                                   {Height=5;Unit=GridUnitType.Star}
+                                   {Height=15;Unit=GridUnitType.Star}
                                 ],                              
                               Children = viewGridChildren model ),
                     style = 

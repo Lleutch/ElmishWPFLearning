@@ -376,7 +376,8 @@ module DSL =
             static member progressBar( ?IsIndeterminate     : bool
                                       ,?Value               : float
                                       ,?Minimum             : float
-                                      ,?Maximum             : float 
+                                      ,?Maximum             : float
+                                      ,?Orientation         : Orientation
                                       ,?ValueChanged        : RoutedPropertyChangedEventArgs<double> -> 'Msg
                                       ,?style               : Style ) = 
                            
@@ -387,6 +388,7 @@ module DSL =
                     |> bindVProperties Value                (fun x -> VProperty.FEProperty (ControlProperty (RangeProperty (RangeProperty.Value x))))
                     |> bindVProperties Minimum              (fun x -> VProperty.FEProperty (ControlProperty (RangeProperty (RangeProperty.Minimum x))))                        
                     |> bindVProperties Maximum              (fun x -> VProperty.FEProperty (ControlProperty (RangeProperty (RangeProperty.Maximum x))))
+                    |> bindVProperties Orientation          (fun x -> VProperty.FEProperty (ControlProperty (RangeProperty (ProgressProperty (ProgressProperty.Orientation x)))))
                     |> Style.PropagateStyle style tag 
                     |> fst
                 let bindedVEvents () =
@@ -553,11 +555,13 @@ module DSL =
             (***      StackPanel    ***) 
             (*** ****************** ***) 
             static member stackPanel( ?style            : Style
+                                     ,?Orientation      : Orientation
                                      ,?Children         : WPFTree<'Msg> list ) =
                                      
                 let fakeTag = Tag.NodeContainer(StackPanel,[])
                 let bindedVProperties () =
                     ([],0)
+                    |> bindVProperties  Orientation     (fun x -> VProperty.FEProperty (PanelProperty (StackPanelProperty (StackPanelProperty.Orientation x))))
                     |> Style.PropagateStyle style fakeTag 
                     |> fst
 

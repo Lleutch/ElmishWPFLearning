@@ -119,7 +119,7 @@ module Processor =
 
     type MessageProcessor<'Msg,'Model>(funcs:FuncProgram<'Msg,'Model>) =
         
-        let modelProcessor (program:Program<'Msg,'Model>) (window:Window) (sync:SynchronizationContext) (inbox:Agent<'Msg>) =
+        let modelProcessor (program:Program<'Msg,'Model>) (window:Window) (sync:SynchronizationContext) (initialSubs:Cmd<'Msg>) (inbox:Agent<'Msg>) =
 
             let commandProcessor = new CommandProcessor<'Msg>(inbox.Post)
 
@@ -128,6 +128,8 @@ module Processor =
                     let! oldView =
                         async{
                             if initial then
+                                commandProcessor.AddCommand initialSubs
+                                
                                 let wpfWindow = program.funcs.view (program.model)
                                 let newWindow = wpfWindow.VirtualConvert(inbox.Post)
                                 let updates = treeDiff oldView newWindow
@@ -189,7 +191,7 @@ module Processor =
                 { model = initialModel
                   funcs = funcs }
 
-            let _ = Agent<'Msg>.Start (modelProcessor program window sync)
+            let _ = Agent<'Msg>.Start (modelProcessor program window sync initialSubs)
             isAlive <- Some mRes
 
         member __.Wait() =
