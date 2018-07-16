@@ -14,7 +14,7 @@ module DSL =
 
         let (|IsControl|_|) (constr: 'a -> VProperty) (tag:Tag<'Msg>) =
             match tag with 
-            | NodeControl _ -> Some constr
+            | NodeSingle (TaggedControl _) -> Some constr
             | _         -> None
 
         let (|IsItems|_|) (constr: 'a -> VProperty) (tag:Tag<'Msg>) =
@@ -24,7 +24,7 @@ module DSL =
 
         let (|IsTextBlock|_|) (constr: 'a -> VProperty) (tag:Tag<'Msg>) =
             match tag with 
-            | NodeControl TextBlock -> Some constr
+            | NodeSingle (TaggedTextBlock _) -> Some constr
             | _         -> None
         
 
@@ -202,7 +202,7 @@ module DSL =
                                  ,?Click                : RoutedEventArgs -> 'Msg 
                                  ,?style                : Style ) = 
                            
-                let tag = Tag.NodeControl Button
+                let tag = Tag.NodeSingle (TaggedControl Button)
                 let bindedVProperties () =
                     ([],0)
                     |> bindVProperties Content              (fun x -> VProperty.FEProperty (ControlProperty (SingleContentProperty  (SingleContentProperty.Content  x))))
@@ -233,7 +233,7 @@ module DSL =
                                     ,?TextChanged           : TextChangedEventArgs -> 'Msg 
                                     ,?style                 : Style ) =                   
             
-                let tag = Tag.NodeControl TextBlock
+                let tag = Tag.NodeSingle (TaggedTextBlock TextBlock)
                 let bindedVProperties () =
                     ([],0)
                     |> bindVProperties  TextAlignment         (fun x -> VProperty.FEProperty (TextBlockProperty (TextBlockProperty.TextAlignment x)))
@@ -269,7 +269,7 @@ module DSL =
                                    ,?Indeterminate        : RoutedEventArgs -> 'Msg  
                                    ,?style                : Style   ) = 
                            
-                let tag = Tag.NodeControl CheckBox
+                let tag = Tag.NodeSingle (TaggedControl CheckBox)
                 let bindedVProperties () =
                     ([],0)
                     |> bindVProperties Content              (fun x -> VProperty.FEProperty (ControlProperty (SingleContentProperty (SingleContentProperty.Content  x))))   
@@ -306,7 +306,7 @@ module DSL =
                                        ,?Indeterminate        : RoutedEventArgs -> 'Msg  
                                        ,?style                : Style   ) = 
                            
-                let tag = Tag.NodeControl TaggedControl.ToggleButton
+                let tag = Tag.NodeSingle (TaggedControl TaggedControl.ToggleButton)
                 let bindedVProperties () =
                     ([],0)
                     |> bindVProperties Content              (fun x -> VProperty.FEProperty (ControlProperty (SingleContentProperty (SingleContentProperty.Content  x))))   
@@ -344,7 +344,7 @@ module DSL =
                                        ,?Indeterminate        : RoutedEventArgs -> 'Msg  
                                        ,?style                : Style   ) = 
                            
-                let tag = Tag.NodeControl RadioButton
+                let tag = Tag.NodeSingle (TaggedControl RadioButton)
                 let bindedVProperties () =
                     ([],0)
                     |> bindVProperties Content              (fun x -> VProperty.FEProperty (ControlProperty (SingleContentProperty (SingleContentProperty.Content  x))))   
@@ -381,7 +381,7 @@ module DSL =
                                       ,?ValueChanged        : RoutedPropertyChangedEventArgs<double> -> 'Msg
                                       ,?style               : Style ) = 
                            
-                let tag = Tag.NodeControl ProgressBar
+                let tag = Tag.NodeSingle (TaggedControl ProgressBar)
                 let bindedVProperties () =
                     ([],0)
                     |> bindVProperties IsIndeterminate      (fun x -> VProperty.FEProperty (ControlProperty (RangeProperty (ProgressProperty (ProgressProperty.IsIndeterminate x)))))
@@ -420,7 +420,7 @@ module DSL =
                                  ,?ValueChanged         : RoutedPropertyChangedEventArgs<double> -> 'Msg
                                  ,?style                : Style ) = 
             
-                let tag = Tag.NodeControl ProgressBar
+                let tag = Tag.NodeSingle (TaggedControl ProgressBar)
                 let bindedVProperties () =
                     ([],0)
                     |> bindVProperties IsIndeterminate      (fun x -> VProperty.FEProperty (ControlProperty (RangeProperty (ProgressProperty (ProgressProperty.IsIndeterminate x)))))
@@ -501,7 +501,7 @@ module DSL =
                                   ,?VerticalScrollBarVisibility : ScrollBarVisibility            
                                   ,?style                       : Style   ) = 
 
-                let tag = Tag.NodeControl TextBox
+                let tag = Tag.NodeSingle (TaggedControl TextBox)
                 let bindedVProperties () =
                     ([],0)
                     |> bindVProperties CanEnter                     (fun x -> VProperty.FEProperty (ControlProperty (TextBoxProperty (TextBoxProperty.CanEnter                     x))))
@@ -583,7 +583,7 @@ module DSL =
                                ,?Coordinate         : LineCoordinate
                                ,?style              : Style ) =
                                      
-                let tag = Tag.NodeControl Line
+                let tag = Tag.NodeSingle (TaggedControl Line)
                 let bindedVProperties () =
                     ([],0)
                     |> bindVProperties  Fill            (fun x -> VProperty.FEProperty (ShapeProperty (ShapeProperty.Fill x)))
@@ -610,7 +610,7 @@ module DSL =
                                    ,?Points             : Coordinate list
                                    ,?style              : Style ) =
                                      
-                let tag = Tag.NodeControl Polyline
+                let tag = Tag.NodeSingle (TaggedControl Polyline)
                 let bindedVProperties () =
                     ([],0)
                     |> bindVProperties  Fill            (fun x -> VProperty.FEProperty (ShapeProperty (ShapeProperty.Fill x)))
@@ -637,7 +637,7 @@ module DSL =
                                     ,?Radius            : Radius
                                     ,?style             : Style ) =
                                      
-                let tag = Tag.NodeControl Rectangle
+                let tag = Tag.NodeSingle (TaggedControl Rectangle)
                 let bindedVProperties () =
                     ([],0)
                     |> bindVProperties  Fill            (fun x -> VProperty.FEProperty (ShapeProperty (ShapeProperty.Fill x)))
@@ -674,7 +674,7 @@ module DSL =
 
                 // This is a fake tag to allow style construction for a window 
                 // a window is a control like a button
-                let fakeTag = Tag.NodeControl TaggedControl.Button
+                let fakeTag = Tag.NodeSingle (TaggedControl TaggedControl.Button)
 
                 let bindedVProperties () =
                     ([],0)

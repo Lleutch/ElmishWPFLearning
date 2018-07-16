@@ -306,13 +306,19 @@ module VDom =
             | ToggleButton
             | CheckBox
             | RadioButton
-            | TextBlock
             | ProgressBar
             | TextBox 
             | Slider
             | Line
             | Rectangle
             | Polyline
+        
+        type TaggedTextBlock =
+            | TextBlock
+        
+        type TaggedSingle =
+            | TaggedControl of TaggedControl
+            | TaggedTextBlock of TaggedTextBlock
 
         type TaggedItems =
             | ComboBox
@@ -320,7 +326,7 @@ module VDom =
         type Tag<'Msg> =
             | NodeContainer of TaggedContainer * WPFTree<'Msg> list
             | NodeItems     of TaggedItems * WPFTree<'Msg> list
-            | NodeControl   of TaggedControl
+            | NodeSingle    of TaggedSingle
 
         and WPFNodeElement<'Msg>  = 
             { Tag : Tag<'Msg>
@@ -1088,13 +1094,23 @@ module VDom =
                     | CheckBox    -> new CheckBox()     :> UIElement
                     | ToggleButton-> new ToggleButton() :> UIElement
                     | RadioButton -> new RadioButton()  :> UIElement
-                    | TextBlock   -> new TextBlock()    :> UIElement
                     | ProgressBar -> new ProgressBar()  :> UIElement
                     | TextBox     -> new TextBox()      :> UIElement
                     | Slider      -> new Slider()       :> UIElement
                     | Line        -> new Line()         :> UIElement
                     | Rectangle   -> new Rectangle()    :> UIElement
                     | Polyline    -> new Polyline()     :> UIElement
+        
+            type TaggedTextBlock with
+                member x.Create() =
+                    match x with
+                    | TextBlock -> new TextBlock() :> UIElement
+        
+            type TaggedSingle with
+                member x.Create() =
+                    match x with
+                    | TaggedControl     tc  -> tc.Create()
+                    | TaggedTextBlock   ttb -> ttb.Create()
 
             type TaggedItems with
                 member x.Create() =
@@ -1110,7 +1126,7 @@ module VDom =
                     | NodeItems     (nodeItems, items)      -> 
                         let append (uiElement:UIElement) (uiElement2:UIElement) = (uiElement :?> ItemsControl).Items.Add(uiElement2) |> ignore                        
                         nodeItems.Create(),items,append      
-                    | NodeControl   (nodeControl)           -> nodeControl.Create(), [], (fun _ _ -> ())
+                    | NodeSingle    (nodeSingle)           -> nodeSingle.Create(), [], (fun _ _ -> ())
 
             let rec private addToUIElement (append : UIElement -> UIElement -> unit) (uiElement : UIElement) (trees : WPFTree<'Msg> list) =
                 for tree in trees do
@@ -1222,8 +1238,8 @@ module VDom =
                             | NodeItems     (items, wpfTrees) -> 
                                 let vTrees = wpfTrees |> List.map(fun wpfTree -> aux wpfTree )
                                 NodeItems     (items, vTrees)
-                            | NodeControl   control               ->
-                                NodeControl   control          
+                            | NodeSingle   nodeSingle         ->
+                                NodeSingle   nodeSingle          
 
                         WPFTree { vNodeElement  with Tag = tag }
                     aux x
@@ -1332,7 +1348,7 @@ module VDom =
                     match nodeOld.Tag,nodeNew.Tag with
                     | NodeContainer (oldContainer, _), NodeContainer (newContainer, _) when oldContainer = newContainer -> true
                     | NodeItems     (oldItems,_), NodeItems     (newItems,_) when oldItems = newItems -> true
-                    | NodeControl   oldControl, NodeControl   newControl when oldControl = newControl -> true
+                    | NodeSingle    oldNodeSingle, NodeSingle   newNodeSingle when oldNodeSingle = newNodeSingle -> true
                     | _,_ -> false
                 
                 if tagsAreEqual then
@@ -1378,12 +1394,12 @@ module VDom =
                                 match oldNode.Tag with
                                 | NodeContainer (_,subTrees) -> subTrees
                                 | NodeItems (_,subTrees) -> subTrees
-                                | NodeControl _ -> []
+                                | NodeSingle _ -> []
                             let newSubTrees =
                                 match newNode.Tag with
                                 | NodeContainer (_,subTrees) -> subTrees
                                 | NodeItems (_,subTrees) -> subTrees
-                                | NodeControl _ -> []
+                                | NodeSingle _ -> []
 
                             aux oldSubTrees newSubTrees (NodeLoc (List.rev nl)) 0 (upEvents::upProps::updates)
                     aux tlOld tlNew (NodeLoc revList) (lineLoc + 1) ups
@@ -1395,20 +1411,34 @@ module VDom =
 
             upEvents::upProps::(List.rev updates)
 
-
-
-
+        
         let private getUIElement (window:Window) (nodeLoc:int list) = 
+            let getNthChild (uiElement:UIElement) (n:int) =
+                match uiElement with
+                | :? Panel as panel -> panel.Children.Item(n)
+                | :? ItemsControl as items -> items.Items.Item(n) :?> UIElement
+                | _ -> failwith "Failure in Code"
+
             let rec aux (uiElement:UIElement) (nodeLoc:int list) =
                 match nodeLoc with
                 | [] -> uiElement
                 | hd::tl ->
-                    let uiElement = (uiElement :?> Panel).Children.Item(hd)
+                    let uiElement = getNthChild uiElement hd
                     aux uiElement tl
 
             match nodeLoc with
             | [] -> window :> UIElement
             | _  -> aux (window.Content :?> UIElement) nodeLoc.Tail
+
+
+        let private getUIElementAndDoAction (window:Window) (nodeLoc:int list) (action1:Panel -> unit) (action2:ItemsControl -> unit) =
+            match (getUIElement window nodeLoc) with
+            | :? Panel as panel -> action1 panel
+            | :? ItemsControl as items -> action2 items
+            | _ -> failwith "Failure in Code"
+
+
+
 
         let updateWindow (window:Window) (updates : Update<'Msg> list) = 
             let rec aux (updates : Update<'Msg> list) =
@@ -1426,19 +1456,32 @@ module VDom =
                     | UpNode        ((NodeLoc nodeLoc),tree) ->
                         let revList = List.rev nodeLoc
                         let index = revList.Head
-                        let parent = (getUIElement window (revList.Tail |> List.rev)) :?> Panel
-                        parent.Children.RemoveAt(index)
-                        parent.Children.Insert(index,tree.Create())
+
+                        let action1 (panel:Panel) =
+                            panel.Children.RemoveAt(index)
+                            panel.Children.Insert(index,tree.Create())
+                        
+                        let action2 (itemsControl:ItemsControl) =
+                            itemsControl.Items.RemoveAt(index)
+                            itemsControl.Items.Insert(index,tree.Create())
+                         
+                        getUIElementAndDoAction window (revList.Tail |> List.rev) action1 action2
                     | AddNode       ((NodeLoc nodeLoc),tree) ->
                         let revList = List.rev nodeLoc
                         let index = revList.Head
-                        let parent = (getUIElement window (revList.Tail |> List.rev)) :?> Panel
-                        parent.Children.Insert(index,tree.Create())
+
+                        let action1 (panel:Panel) = panel.Children.Insert(index,tree.Create())                                                
+                        let action2 (itemsControl:ItemsControl) = itemsControl.Items.Insert(index,tree.Create()) 
+
+                        getUIElementAndDoAction window (revList.Tail |> List.rev) action1 action2
                     | RemoveNode    (NodeLoc nodeLoc) ->
                         let revList = List.rev nodeLoc
                         let index = revList.Head
-                        let parent = (getUIElement window (revList.Tail |> List.rev)) :?> Panel
-                        parent.Children.RemoveAt(index)
+
+                        let action1 (panel:Panel) = panel.Children.RemoveAt(index)                                      
+                        let action2 (itemsControl:ItemsControl) = itemsControl.Items.RemoveAt(index)
+
+                        getUIElementAndDoAction window (revList.Tail |> List.rev) action1 action2
                 
                     aux tl
             aux updates

@@ -7,15 +7,35 @@
 
 module types =
     open NAudio.Wave
+    open System
+
+    type MeterType =
+        | RMSMeter
+        | PeakMeter
+        | PeakToPeakMeter
+        | FFTMeter
+    
+    type MeterResult =
+        | RMSResult of float
+        | PeakResult of float
+        | PeakToPeakResult of float
+        | FFTResult of Map<int*int,float> 
 
     type Model = 
         { waveIn : WaveInEvent
-          Data : Map<int * int, float> }
+          Data : MeterResult 
+          currentHandler : EventHandler<WaveInEventArgs> 
+          meterDispatcher : MeterType -> unit 
+          sampleDispatcher : float -> unit }
 
     type Msg = 
         | Play
         | Stop
-        | DataDisplay of Map<int * int, float>
+        | NewHandler of EventHandler<WaveInEventArgs>
+        | MeterDispatcher of (MeterType -> unit)
+        | SampleDispatcher of (float -> unit)
+        | ChangeAlgorithm of string
+        | DataDisplay of MeterResult
 
 
 module simpleViewer =
@@ -27,7 +47,7 @@ module simpleViewer =
     let power = 12
     let fftSamplingRate = pown 2 power
     let otherSamplingRate = 4410
-    let bands = 10
+    let bands = 20
 
     let printing level =
         //let spaces = String.replicate (level) " "
@@ -36,13 +56,6 @@ module simpleViewer =
         //printf "%s|" spaces
         printf "%s %i" (String.replicate 30 " ") level
         System.Console.SetCursorPosition(0, System.Console.CursorTop)
-
-
-    type MeterResult =
-        | RMSResult of float
-        | PeakResult of float
-        | PeakToPeakResult of float
-        | FFTResult of Map<int*int,float> 
         
     let peakValue (data:float list) =
         data
@@ -64,13 +77,15 @@ module simpleViewer =
 
     
     let fftValue (data:float list) =
-        let halfSampleRate = sampleRate / 2 
+        //let maxfrequency = sampleRate / 20
+        let maxfrequency = 1500 // 1kHz
+
         let map = 
             let mutable f = Map.empty<int*int,float list>
             for i in 0..(bands-1) do
-                f <- f.Add ( (i*(halfSampleRate/bands),(i+1)*(halfSampleRate/bands)) , [] )
+                f <- f.Add ( (i*(maxfrequency/bands),(i+1)*(maxfrequency/bands)) , [] )
             f
-
+        
         let isBetween ((min,max): int * int) (i:int) = i >= min && i < max
 
         let toFFT (data:float []) =
@@ -82,36 +97,35 @@ module simpleViewer =
                     c.Y <- 0.f
                     c
                    )
-            FastFourierTransform.FFT(true, power - 1 , data);
+            FastFourierTransform.FFT(true, power , data);
             data
 
         data
         |> List.rev
-        |> List.take (fftSamplingRate/2)
         |> List.toArray
         |> toFFT
+        |> Array.take (fftSamplingRate/2)
         |> Array.mapi(fun index v -> (index * sampleRate / fftSamplingRate,v) )
         |> Array.fold(fun (min,max,map) (freq,c) -> 
             if freq |> isBetween (min,max) then
                 let l = Map.find (min,max) map
                 let l = (c.X |> float)::l
                 (min,max,map.Add ((min,max),l) )
-            else
+            elif freq <= maxfrequency then
                 let min = max
-                let max = max + halfSampleRate/bands
+                let max = max + maxfrequency/bands
                 let l = Map.find (min,max) map
                 let l = (c.X |> float)::l
-                (min,max,map.Add ((min,max),l) )                
-           ) (0,halfSampleRate/bands,map)
+                (min,max,map.Add ((min,max),l) )    
+            else
+                (min,max,map)    
+                
+           ) (0,maxfrequency/bands,map)
         |> (fun (_,_,map) -> map)
         |> Map.map (fun _ v -> List.max v)
         |> FFTResult
 
-    type MeterType =
-        | RMSMeter
-        | PeakMeter
-        | PeakToPeakMeter
-        | FFTMeter
+    type MeterType with
         member x.GetValue (data:float list) =
             match x with
             | RMSMeter  -> rmsValue data
@@ -124,14 +138,22 @@ module simpleViewer =
             | PeakMeter 
             | PeakToPeakMeter -> otherSamplingRate
             | FFTMeter -> fftSamplingRate
-        
-
+        static member All =
+            FSharp.Reflection.FSharpType.GetUnionCases(typeof<MeterType>)
+            |> Array.map( fun uc -> uc.Name )
+            |> Array.toList
+        static member From (str:string) =
+            FSharp.Reflection.FSharpType.GetUnionCases(typeof<MeterType>)
+            |> Array.find( fun uc -> uc.Name = str )
+            |> (fun uc -> FSharp.Reflection.FSharpValue.MakeUnion(uc,[||]) :?> MeterType)
 
     type Agent<'a> = MailboxProcessor<'a>    
     type MsgAgent =
         | NewSample of float
+        | NewMeter of MeterType
 
     type SimpleViewer(meter:MeterType,dispatch:Dispatch<Msg>) =
+        let mutable meter = meter
         let samplingRate = meter.SamplingRate
 
         let sampleProcessor (inbox:Agent<MsgAgent>) =
@@ -142,16 +164,13 @@ module simpleViewer =
                     | NewSample sample ->
                         if sampleNumber = samplingRate then
                             let level = meter.GetValue samples  // [0. .. 1.]
-                            match level with
-                            | RMSResult res
-                            | PeakResult res
-                            | PeakToPeakResult res -> 
-                                let level = res * 10. |> int      // [0 .. 10]
-                                printing level
-                            | FFTResult res -> dispatch (DataDisplay res)
+                            dispatch (DataDisplay level)
                             return! aux [] 0
                         else
-                            return! aux (sample::samples) (sampleNumber + 1)                            
+                            return! aux (sample::samples) (sampleNumber + 1)     
+                    | NewMeter newMeter ->
+                        meter <- newMeter
+                        return! aux samples sampleNumber     
                 }
 
             aux [] 0
@@ -159,17 +178,19 @@ module simpleViewer =
         let agent = Agent<MsgAgent>.Start sampleProcessor
 
         member __.NewSample(sample32) = agent.Post (NewSample sample32)
-    
+        member __.NewMeter(meter) = agent.Post (NewMeter meter)
+            
 
 
 module test =
+    open System
     open NAudio.Wave
     open simpleViewer
     open Elmish.ProgramTypes
     open types
 
-    let processSample (simpleViewer:SimpleViewer) (sample32:float) = 
-        simpleViewer.NewSample sample32
+    let processSample (sampleDispatcher:float -> unit) (sample32:float) = 
+        sampleDispatcher sample32
 
     let toPcmSample (data1:byte) (data2:byte) =
         let data1 = data1 |> int16 
@@ -178,29 +199,50 @@ module test =
         ( sample / (pown 2. 15) )
 
 
-    let processSignal (simpleViewer:SimpleViewer) (data:WaveInEventArgs) =
+    let processSignal (sampleDispatcher:float -> unit) (data:WaveInEventArgs) =
         for index in 0..2..(data.BytesRecorded-1)  do 
             let pcmSample = toPcmSample (data.Buffer.[index]) (data.Buffer.[index + 1])
-            processSample simpleViewer pcmSample
+            processSample sampleDispatcher pcmSample
     
     let buildMicrophone () =       
         let waveIn = new WaveInEvent()
         waveIn
         
-    let addProcessing (waveIn:WaveInEvent) (dispatch : Dispatch<Msg>) =
+    let addProcessing (waveIn:WaveInEvent) (dispatch : Dispatch<Msg>) (meter:MeterType) =
         async{
-            let simpleViewer = new SimpleViewer(FFTMeter,dispatch)
+            let simpleViewer = new SimpleViewer(meter,dispatch)
             let channelCount = 1 // mono
 
             waveIn.DeviceNumber <- 0 
-            waveIn.DataAvailable.Add(processSignal simpleViewer)
+            let handler = EventHandler<WaveInEventArgs>(fun _ arg -> processSignal (simpleViewer.NewSample) arg)
+            waveIn.DataAvailable.AddHandler handler
 
             waveIn.WaveFormat <- new WaveFormat(sampleRate,channelCount)
+            dispatch (NewHandler handler)
+            dispatch (MeterDispatcher (simpleViewer.NewMeter))
+            dispatch (SampleDispatcher (simpleViewer.NewSample))
         }
                 
+    let updateProcessingAlgorithm (waveIn:WaveInEvent) 
+                                  (meter:MeterType)
+                                  meterDispatcher 
+                                  sampleDispatcher 
+                                  (dispatch : Dispatch<Msg>) previousHandler =
+        async{
+            dispatch Stop
+            
+            waveIn.DataAvailable.RemoveHandler previousHandler
+            let newHandler = EventHandler<WaveInEventArgs>(fun _ arg -> processSignal sampleDispatcher arg)
+            waveIn.DataAvailable.AddHandler newHandler
+
+            meterDispatcher meter
+            dispatch (NewHandler newHandler)
+            dispatch Play
+        }
 
 
 module MVU =
+    open System
     open test
     open System.Windows
     open Elmish.DSL.DSL
@@ -209,12 +251,17 @@ module MVU =
     open System.Windows.Controls
     open types
     open simpleViewer
+    open NAudio.Wave
 
     let init () = 
         let initModel = 
             { waveIn = buildMicrophone()
-              Data = Map.empty<int * int, float> }
-        initModel,AsyncDispatcher (fun dispatch -> addProcessing (initModel.waveIn) dispatch )
+              Data = FFTResult (Map.empty<int * int, float>) 
+              currentHandler = EventHandler<WaveInEventArgs>(fun _ _ -> ()) 
+              meterDispatcher = fun _ -> ()
+              sampleDispatcher = fun _ -> ()    }
+
+        initModel,Cmd.AsyncDispatcher (fun dispatch -> addProcessing (initModel.waveIn) dispatch FFTMeter )
 
             
 
@@ -226,21 +273,39 @@ module MVU =
         | Stop -> 
             (model.waveIn.StopRecording())
             Success model,NoEffect
+        | ChangeAlgorithm str ->
+            let meter = MeterType.From str
+            Success model ,AsyncDispatcher (fun dispatch -> updateProcessingAlgorithm (model.waveIn) meter (model.meterDispatcher) (model.sampleDispatcher) dispatch (model.currentHandler))
         | DataDisplay data ->
             Success { model with Data = data } ,NoEffect
+        | NewHandler handler ->
+            Success { model with currentHandler = handler } ,NoEffect
+        | MeterDispatcher meterDispatcher ->
+            Success { model with meterDispatcher = meterDispatcher } ,NoEffect
+        | SampleDispatcher sampleDispatcher ->
+            Success { model with sampleDispatcher = sampleDispatcher } ,NoEffect
+        
+        
 
-
-    let viewProgressBars (model:Model) =
+    let viewProgressBars data =
         [ let mutable i = 0
-          for KeyValue (_,v) in model.Data do
+          for KeyValue ((min,max),v) in data do
             i <- i + 1
-            yield WPF.progressBar( style = new Style(Column = i-1), Value = v , Minimum = 0. , Maximum = 0.05 , Orientation=Orientation.Vertical)
-        ]        
+            yield WPF.progressBar( style = new Style(Column = i-1,Row = 0), Value = v , Minimum = 0. , Maximum = 0.05 , Orientation=Orientation.Vertical)
+            yield WPF.textBlock( style = new Style(Column = i-1,Row = 1,HorizontalAlignment = HorizontalAlignment.Center), Text = sprintf "%A" ((min + max) / 2)  )
+        ]         
 
-    let viewGrid children =
-        WPF.grid( style = new Style( Row = 1 , ColumnSpan = 2) 
-                  , ColumnDefinitions = [ for _ in 1..bands -> {Width =1;Unit=GridUnitType.Star} ]
-                  , Children = children)
+    let viewGrid (model:Model) =
+        match model.Data with
+        | RMSResult v
+        | PeakResult v
+        | PeakToPeakResult v ->
+            WPF.progressBar( style = new Style(Row = 1, ColumnSpan = 3,HorizontalAlignment = HorizontalAlignment.Center, Width = 60.), Value = v , Minimum = 0. , Maximum = 1. , Orientation=Orientation.Vertical)
+        | FFTResult data ->
+            WPF.grid( style = new Style( Row = 1 , ColumnSpan = 3) 
+                     ,ColumnDefinitions = [ for _ in 1..bands -> {Width =1;Unit=GridUnitType.Star} ]
+                     ,RowDefinitions = [ for _ in 1..2 -> {Height= 1;Unit=GridUnitType.Star} ]
+                     ,Children = viewProgressBars data)
 
     let viewGridChildren (model:Model) = 
         [   yield WPF.button( style = new Style(Row = 0,Column = 0) ,
@@ -249,7 +314,10 @@ module MVU =
             yield WPF.button( style = new Style(Row = 0,Column = 1) ,
                               Content = ("Stop!" |> box), 
                               Click = fun _ -> Stop ) 
-            yield viewGrid (viewProgressBars model)
+            yield WPF.comboBox( children = [ for str in MeterType.All -> WPF.textBlock(Text = str) ] ,
+                                style = new Style(Row = 0,Column = 2) ,
+                                SelectionChanged = (fun args -> (args.AddedItems.Item 0 :?> TextBlock).Text |> ChangeAlgorithm) )
+            yield viewGrid model
         ]
 
     
@@ -260,6 +328,7 @@ module MVU =
                                 ],  
                               ColumnDefinitions =
                                 [  {Width =1;Unit=GridUnitType.Star}
+                                   {Width =1;Unit=GridUnitType.Star}
                                    {Width =1;Unit=GridUnitType.Star}
                                 ],  
                               Children = viewGridChildren model ),
