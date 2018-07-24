@@ -26,7 +26,12 @@ module DSL =
             match tag with 
             | NodeSingle (TaggedTextBlock _) -> Some constr
             | _         -> None
-        
+
+        let (|IsBorder|_|) (constr: 'a -> VProperty) (tag:Tag<'Msg>) =
+            match tag with 
+            | NodeSingle (TaggedBorder _) -> Some constr
+            | _         -> None
+
 
 
         let (>||) ((|AP1|_|): Tag<'Msg> -> ('a -> VProperty) option) ((|AP2|_|): Tag<'Msg> -> ('a -> VProperty) option) =
@@ -78,8 +83,7 @@ module DSL =
         open System.Windows.Markup
         open VDom.VirtualProperty.FsWPFRepresentation
         open System.Windows.Controls.Primitives
-
-
+        open System.Windows.Data
 
 
 
@@ -87,7 +91,11 @@ module DSL =
                      ?Column               
                     ,?ColumnSpan           
                     ,?Row                  
-                    ,?RowSpan              
+                    ,?RowSpan     
+                    ,?Bottom
+                    ,?Left
+                    ,?Right
+                    ,?Top
                     ,?IsEnabled
                     ,?Opacity
                     ,?Visibility
@@ -116,13 +124,17 @@ module DSL =
             member private __.BindedVProperties (list, tag : Tag<'Msg>) =
                 list
                 //1.  
-                |> bindVProperties Column       (fun x -> VProperty.VStyle (UIElementStyle (UIElementStyle.Column        x)))
-                |> bindVProperties ColumnSpan   (fun x -> VProperty.VStyle (UIElementStyle (UIElementStyle.ColumnSpan    x)))        
-                |> bindVProperties Row          (fun x -> VProperty.VStyle (UIElementStyle (UIElementStyle.Row           x)))        
-                |> bindVProperties RowSpan      (fun x -> VProperty.VStyle (UIElementStyle (UIElementStyle.RowSpan       x)))        
-                |> bindVProperties IsEnabled    (fun x -> VProperty.VStyle (UIElementStyle (UIElementStyle.IsEnabled     x)))
-                |> bindVProperties Opacity      (fun x -> VProperty.VStyle (UIElementStyle (UIElementStyle.Opacity       x)))
-                |> bindVProperties Visibility   (fun x -> VProperty.VStyle (UIElementStyle (UIElementStyle.Visibility    x)))
+                |> bindVProperties Column       (fun x -> VProperty.VStyle (UIElementStyle (UIElementStyle.Column       x)))
+                |> bindVProperties ColumnSpan   (fun x -> VProperty.VStyle (UIElementStyle (UIElementStyle.ColumnSpan   x)))        
+                |> bindVProperties Row          (fun x -> VProperty.VStyle (UIElementStyle (UIElementStyle.Row          x)))        
+                |> bindVProperties RowSpan      (fun x -> VProperty.VStyle (UIElementStyle (UIElementStyle.RowSpan      x)))        
+                |> bindVProperties Bottom       (fun x -> VProperty.VStyle (UIElementStyle (UIElementStyle.Bottom       x)))
+                |> bindVProperties Left         (fun x -> VProperty.VStyle (UIElementStyle (UIElementStyle.Left         x)))
+                |> bindVProperties Right        (fun x -> VProperty.VStyle (UIElementStyle (UIElementStyle.Right        x)))
+                |> bindVProperties Top          (fun x -> VProperty.VStyle (UIElementStyle (UIElementStyle.Top          x)))
+                |> bindVProperties IsEnabled    (fun x -> VProperty.VStyle (UIElementStyle (UIElementStyle.IsEnabled    x)))
+                |> bindVProperties Opacity      (fun x -> VProperty.VStyle (UIElementStyle (UIElementStyle.Opacity      x)))
+                |> bindVProperties Visibility   (fun x -> VProperty.VStyle (UIElementStyle (UIElementStyle.Visibility   x)))
                 //2. 
                 |> bindVProperties Height               (fun x -> VProperty.VStyle (FrameworkElementStyle (FrameworkElementStyle.Height                 x)))
                 |> bindVProperties HorizontalAlignment  (fun x -> VProperty.VStyle (FrameworkElementStyle (FrameworkElementStyle.HorizontalAlignment    x)))
@@ -130,8 +142,6 @@ module DSL =
                 |> bindVProperties VerticalAlignment    (fun x -> VProperty.VStyle (FrameworkElementStyle (FrameworkElementStyle.VerticalAlignment      x)))
                 |> bindVProperties Width                (fun x -> VProperty.VStyle (FrameworkElementStyle (FrameworkElementStyle.Width                  x)))
                 //3.
-                |> bindVPropertiesWithMatch BorderBrush                  ((|IsControl|_|) (fun x -> VProperty.VStyle (ControlStyle (ControlStyle.BorderBrush                  x)))) tag
-                |> bindVPropertiesWithMatch BorderThickness              ((|IsControl|_|) (fun x -> VProperty.VStyle (ControlStyle (ControlStyle.BorderThickness              x)))) tag
                 |> bindVPropertiesWithMatch HorizontalContentAlignment   ((|IsControl|_|) (fun x -> VProperty.VStyle (ControlStyle (ControlStyle.HorizontalContentAlignment   x)))) tag
                 |> bindVPropertiesWithMatch VerticalContentAlignment     ((|IsControl|_|) (fun x -> VProperty.VStyle (ControlStyle (ControlStyle.VerticalContentAlignment     x)))) tag
                 //3.
@@ -139,7 +149,18 @@ module DSL =
                         Background                   
                         (     ((|IsContainer|_|) (fun x -> VProperty.VStyle (PanelStyle (PanelStyle.Background          x))))
                           >|| ((|IsControl|_|)   (fun x -> VProperty.VStyle (ControlStyle (ControlStyle.Background      x))))
+                          >|| ((|IsBorder|_|)    (fun x -> VProperty.VStyle (DecoratorStyle (BorderStyle (BorderStyle.Background      x)))))
                           >|| ((|IsTextBlock|_|) (fun x -> VProperty.VStyle (TextBlockStyle (TextBlockStyle.Background  x))))  ) 
+                        tag
+                |> bindVPropertiesWithMatch
+                        BorderBrush                   
+                        (      ((|IsControl|_|) (fun x -> VProperty.VStyle (ControlStyle (ControlStyle.BorderBrush                  x)))) 
+                          >||  ((|IsBorder|_|) (fun x -> VProperty.VStyle (DecoratorStyle (BorderStyle (BorderStyle.BorderBrush                  x)))))  )
+                        tag
+                |> bindVPropertiesWithMatch
+                        BorderThickness                   
+                        (      ((|IsControl|_|) (fun x -> VProperty.VStyle (ControlStyle (ControlStyle.BorderThickness                  x)))) 
+                          >||  ((|IsBorder|_|) (fun x -> VProperty.VStyle (DecoratorStyle (BorderStyle (BorderStyle.BorderThickness                  x)))))  )
                         tag
                 |> bindVPropertiesWithMatch 
                         FontFamily                   
@@ -176,18 +197,11 @@ module DSL =
                         (      ((|IsControl|_|) (fun x -> VProperty.VStyle (ControlStyle (ControlStyle.Padding         x)))) 
                           >||  ((|IsTextBlock|_|) (fun x -> VProperty.VStyle (TextBlockStyle (TextBlockStyle.Padding   x))))  )
                         tag                    
-                |> bindVPropertiesWithMatch 
-                        Background  
-                        (    ((|IsContainer|_|) (fun x -> VProperty.VStyle (PanelStyle (PanelStyle.Background     x))))    
-                         >|| ((|IsControl|_|)   (fun x -> VProperty.VStyle (ControlStyle (ControlStyle.Background x))))  )  
-                        tag
         
             static member internal PropagateStyle (style:Style option) tag list =
                 match style with
                 | Some style -> style.BindedVProperties(list,tag)
                 | None       -> list
-            
-
 
 
 
@@ -574,11 +588,53 @@ module DSL =
                 WPFTree node
 
 
+
+            (*** ****************** ***) 
+            (***      Canvas        ***) 
+            (*** ****************** ***) 
+            static member canvas( ?style    : Style 
+                                 ,?Children : WPFTree<'Msg> list  ) =
+                                     
+                let fakeTag = Tag.NodeContainer(Canvas,[])
+                let bindedVProperties () =
+                    ([],0)
+                    |> Style.PropagateStyle style fakeTag 
+                    |> fst
+
+                let vprops  = bindedVProperties ()
+                let node =
+                    { Tag        = Tag.NodeContainer(Canvas,defaultArg Children [])
+                      Properties = vprops   |> VProperties
+                      WPFEvents  = [] |> WPFEvents 
+                      Events     = [] |> VEvents  }
+                WPFTree node
+
+            (*** ****************** ***) 
+            (***      Ellipse       ***) 
+            (*** ****************** ***) 
+            static member ellipse( ?style : Style ) =
+                                     
+                let tag = Tag.NodeSingle (TaggedControl Ellipse)
+                let bindedVProperties () =
+                    ([],0)
+                    |> Style.PropagateStyle style tag 
+                    |> fst
+
+                let vprops  = bindedVProperties ()
+                let node =
+                    { Tag        = tag
+                      Properties = vprops   |> VProperties
+                      WPFEvents  = [] |> WPFEvents 
+                      Events     = [] |> VEvents  }
+                WPFTree node
+
+
+
             (*** ****************** ***) 
             (***      Line          ***) 
             (*** ****************** ***) 
-            static member line( ?Fill               : Brush
-                               ,?Stroke             : Brush
+            static member line( ?Fill               : Color
+                               ,?Stroke             : Color
                                ,?StrokeThickness    : float
                                ,?Coordinate         : LineCoordinate
                                ,?style              : Style ) =
@@ -604,8 +660,8 @@ module DSL =
             (*** ****************** ***) 
             (***      PolyLine      ***) 
             (*** ****************** ***) 
-            static member polyline( ?Fill               : Brush
-                                   ,?Stroke             : Brush
+            static member polyline( ?Fill               : Color
+                                   ,?Stroke             : Color
                                    ,?StrokeThickness    : float
                                    ,?Points             : Coordinate list
                                    ,?style              : Style ) =
@@ -631,8 +687,8 @@ module DSL =
             (*** ****************** ***) 
             (***      Rectangle     ***) 
             (*** ****************** ***) 
-            static member rectangle( ?Fill              : Brush
-                                    ,?Stroke            : Brush
+            static member rectangle( ?Fill              : Color
+                                    ,?Stroke            : Color
                                     ,?StrokeThickness   : float
                                     ,?Radius            : Radius
                                     ,?style             : Style ) =
@@ -644,6 +700,26 @@ module DSL =
                     |> bindVProperties  Stroke          (fun x -> VProperty.FEProperty (ShapeProperty (ShapeProperty.Stroke x)))
                     |> bindVProperties  StrokeThickness (fun x -> VProperty.FEProperty (ShapeProperty (ShapeProperty.StrokeThickness x)))
                     |> bindVProperties  Radius          (fun x -> VProperty.FEProperty (ShapeProperty (RectangleProperty (RectangleProperty.Radius x))))
+                    |> Style.PropagateStyle style tag 
+                    |> fst
+
+                let vprops  = bindedVProperties ()
+                let node =
+                    { Tag        = tag
+                      Properties = vprops   |> VProperties
+                      WPFEvents  = [] |> WPFEvents 
+                      Events     = [] |> VEvents  }
+                WPFTree node
+
+
+            (*** ****************** ***) 
+            (***      Border        ***) 
+            (*** ****************** ***) 
+            static member border( ?style           : Style ) =
+                                     
+                let tag = Tag.NodeSingle (TaggedBorder Border)
+                let bindedVProperties () =
+                    ([],0)
                     |> Style.PropagateStyle style tag 
                     |> fst
 

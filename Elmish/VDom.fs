@@ -41,6 +41,10 @@ module VDom =
             | ColumnSpan    of int 
             | Row           of int 
             | RowSpan       of int 
+            | Bottom        of float
+            | Left          of float
+            | Right         of float
+            | Top           of float
             | IsEnabled     of bool
             | Opacity       of float
             | Visibility    of Visibility
@@ -53,32 +57,39 @@ module VDom =
             | Width                 of float
             
         type ControlStyle =
-            | Background                    of Brush
-            | BorderBrush                   of Brush
+            | Background                    of Color
+            | BorderBrush                   of Color
             | BorderThickness               of Thickness
             | FontFamily                    of FontFamily
             | FontSize                      of float
             | FontStretch                   of FontStretch
             | FontStyle                     of FontStyle
             | FontWeight                    of FontWeight
-            | Foreground                    of Brush
+            | Foreground                    of Color
             | HorizontalContentAlignment    of HorizontalAlignment
             | Padding                       of Thickness
             | VerticalContentAlignment      of VerticalAlignment
                         
         type PanelStyle =
-            | Background of Brush
+            | Background of Color
 
         type TextBlockStyle =
-            | Background                    of Brush
+            | Background                    of Color
             | FontFamily                    of FontFamily
             | FontSize                      of float
             | FontStretch                   of FontStretch
             | FontStyle                     of FontStyle
             | FontWeight                    of FontWeight
-            | Foreground                    of Brush
+            | Foreground                    of Color
             | Padding                       of Thickness
 
+        type BorderStyle =
+            | Background of Color
+            | BorderBrush                   of Color
+            | BorderThickness               of Thickness
+
+        type DecoratorStyle =
+            | BorderStyle of BorderStyle
        
         type VStyle = 
             | UIElementStyle of UIElementStyle
@@ -86,6 +97,7 @@ module VDom =
             | ControlStyle of ControlStyle
             | PanelStyle of PanelStyle
             | TextBlockStyle of TextBlockStyle
+            | DecoratorStyle of DecoratorStyle
 
         type ProgressProperty =
             | IsIndeterminate of bool
@@ -183,8 +195,8 @@ module VDom =
             | Radius of Radius
 
         type ShapeProperty =
-            | Fill of Brush
-            | Stroke of Brush
+            | Fill of Color
+            | Stroke of Color
             | StrokeThickness of float
             | LineProperty of LineProperty
             | PolyLineProperty of PolyLineProperty
@@ -300,6 +312,7 @@ module VDom =
         type TaggedContainer =
             | Grid
             | StackPanel
+            | Canvas
             
         type TaggedControl  =
             | Button 
@@ -312,13 +325,19 @@ module VDom =
             | Line
             | Rectangle
             | Polyline
+            | Ellipse
+
         
         type TaggedTextBlock =
             | TextBlock
         
+        type TaggedBorder =
+            | Border
+
         type TaggedSingle =
             | TaggedControl of TaggedControl
             | TaggedTextBlock of TaggedTextBlock
+            | TaggedBorder of TaggedBorder 
 
         type TaggedItems =
             | ComboBox
@@ -362,6 +381,10 @@ module VDom =
                 | ColumnSpan _  -> ColumnSpan   1
                 | Row        _  -> Row          0
                 | RowSpan    _  -> RowSpan      1
+                | Bottom     _  -> Bottom       0.
+                | Left       _  -> Left         0.
+                | Right      _  -> Right        0.
+                | Top        _  -> Top          0.
                 | UIElementStyle.IsEnabled  _  -> UIElementStyle.IsEnabled    true
                 | Opacity    _  -> Opacity      1.0  
                 | Visibility _  -> Visibility   Visibility.Visible 
@@ -378,35 +401,47 @@ module VDom =
         type ControlStyle with
             member x.DefaultValue =
                 match x with
-                | ControlStyle.Background     _ -> ControlStyle.Background    Brushes.Transparent
-                | BorderBrush                 _ -> BorderBrush                Brushes.Transparent
-                | BorderThickness             _ -> BorderThickness            (new Thickness(0.,0.,0.,0.))
-                | ControlStyle.FontFamily     _ -> ControlStyle.FontFamily    (Media.FontFamily("Segoe UI"))
-                | ControlStyle.FontSize       _ -> ControlStyle.FontSize      (SystemFonts.MessageFontSize)
-                | ControlStyle.FontStretch    _ -> ControlStyle.FontStretch   FontStretches.Normal
-                | ControlStyle.FontStyle      _ -> ControlStyle.FontStyle     FontStyles.Normal
-                | ControlStyle.FontWeight     _ -> ControlStyle.FontWeight    FontWeights.Normal
-                | ControlStyle.Foreground     _ -> ControlStyle.Foreground    Brushes.Black
-                | HorizontalContentAlignment  _ -> HorizontalContentAlignment HorizontalAlignment.Left
-                | ControlStyle.Padding        _ -> ControlStyle.Padding       (new Thickness(0.,0.,0.,0.))
-                | VerticalContentAlignment    _ -> VerticalContentAlignment   VerticalAlignment.Top
+                | ControlStyle.Background       _ -> ControlStyle.Background        Colors.Transparent
+                | ControlStyle.BorderBrush      _ -> ControlStyle.BorderBrush       Colors.Transparent
+                | ControlStyle.BorderThickness  _ -> ControlStyle.BorderThickness   (new Thickness(0.,0.,0.,0.))
+                | ControlStyle.FontFamily       _ -> ControlStyle.FontFamily        (Media.FontFamily("Segoe UI"))
+                | ControlStyle.FontSize         _ -> ControlStyle.FontSize          (SystemFonts.MessageFontSize)
+                | ControlStyle.FontStretch      _ -> ControlStyle.FontStretch       FontStretches.Normal
+                | ControlStyle.FontStyle        _ -> ControlStyle.FontStyle         FontStyles.Normal
+                | ControlStyle.FontWeight       _ -> ControlStyle.FontWeight        FontWeights.Normal
+                | ControlStyle.Foreground       _ -> ControlStyle.Foreground        Colors.Black
+                | HorizontalContentAlignment    _ -> HorizontalContentAlignment     HorizontalAlignment.Left
+                | ControlStyle.Padding          _ -> ControlStyle.Padding           (new Thickness(0.,0.,0.,0.))
+                | VerticalContentAlignment      _ -> VerticalContentAlignment       VerticalAlignment.Top
 
         type PanelStyle with
             member x.DefaultValue =
                 match x with
-                | PanelStyle.Background _   -> PanelStyle.Background    Brushes.Transparent
+                | PanelStyle.Background _   -> PanelStyle.Background    Colors.Transparent
 
         type TextBlockStyle with
             member x.DefaultValue =
                 match x with
-                | TextBlockStyle.Background     _ -> TextBlockStyle.Background    Brushes.Transparent
+                | TextBlockStyle.Background     _ -> TextBlockStyle.Background    Colors.Transparent
                 | TextBlockStyle.FontFamily     _ -> TextBlockStyle.FontFamily    (Media.FontFamily("Segoe UI"))
                 | TextBlockStyle.FontSize       _ -> TextBlockStyle.FontSize      (SystemFonts.MessageFontSize)
                 | TextBlockStyle.FontStretch    _ -> TextBlockStyle.FontStretch   FontStretches.Normal
                 | TextBlockStyle.FontStyle      _ -> TextBlockStyle.FontStyle     FontStyles.Normal
                 | TextBlockStyle.FontWeight     _ -> TextBlockStyle.FontWeight    FontWeights.Normal
-                | TextBlockStyle.Foreground     _ -> TextBlockStyle.Foreground    Brushes.Black
+                | TextBlockStyle.Foreground     _ -> TextBlockStyle.Foreground    Colors.Black
                 | TextBlockStyle.Padding        _ -> TextBlockStyle.Padding       (new Thickness(0.,0.,0.,0.))
+
+        type BorderStyle with
+            member x.DefaultValue =
+                match x with
+                | BorderStyle.Background        _ -> BorderStyle.Background Colors.Transparent
+                | BorderStyle.BorderBrush       _ -> BorderStyle.BorderBrush Colors.Transparent
+                | BorderStyle.BorderThickness   _ -> BorderStyle.BorderThickness (new Thickness(0.,0.,0.,0.))
+
+        type DecoratorStyle with
+            member x.DefaultValue =
+                match x with
+                | BorderStyle bStyle -> bStyle.DefaultValue |> BorderStyle
 
         type VStyle with
             member x.DefaultValue =
@@ -416,6 +451,8 @@ module VDom =
                 | ControlStyle cStyle           -> cStyle.DefaultValue   |> ControlStyle
                 | PanelStyle pStyle             -> pStyle.DefaultValue   |> PanelStyle 
                 | TextBlockStyle tbStyle        -> tbStyle.DefaultValue  |> TextBlockStyle
+                | DecoratorStyle dStyle         -> dStyle.DefaultValue   |> DecoratorStyle
+
 
         type ProgressProperty with
             member x.DefaultValue =
@@ -548,8 +585,8 @@ module VDom =
         type ShapeProperty with
             member x.DefaultValue =
                 match x with 
-                | Fill              _   -> Fill            null               
-                | Stroke            _   -> Stroke          null
+                | Fill              _   -> Fill            Colors.Transparent               
+                | Stroke            _   -> Stroke          Colors.Transparent
                 | StrokeThickness   _   -> StrokeThickness 0.
                 | LineProperty      lp  -> lp.DefaultValue  |> LineProperty
                 | PolyLineProperty  plp -> plp.DefaultValue |> PolyLineProperty
@@ -645,7 +682,7 @@ module VDom =
                 | LineUpdate                of (Line -> unit)
                 | PolyLineUpdate            of (Polyline -> unit)
                 | RectangeUpdate            of (Rectangle -> unit)
-
+                | BorderUpdate              of (Border -> unit)
 
             type UIElementStyle with
                 member x.PropertyUpdate() =
@@ -654,6 +691,10 @@ module VDom =
                     | ColumnSpan prop   -> UIElementUpdate (fun ui -> Grid.SetColumnSpan(ui,prop))
                     | Row        prop   -> UIElementUpdate (fun ui -> Grid.SetRow(ui,prop))
                     | RowSpan    prop   -> UIElementUpdate (fun ui -> Grid.SetRowSpan(ui,prop)) 
+                    | Bottom     prop   -> UIElementUpdate (fun ui -> Canvas.SetBottom(ui,prop))
+                    | Left       prop   -> UIElementUpdate (fun ui -> Canvas.SetLeft(ui,prop))
+                    | Right      prop   -> UIElementUpdate (fun ui -> Canvas.SetRight(ui,prop))
+                    | Top        prop   -> UIElementUpdate (fun ui -> Canvas.SetTop(ui,prop))
                     | UIElementStyle.IsEnabled  prop    -> UIElementUpdate (fun ui -> ui.IsEnabled <- prop) 
                     | Opacity    prop   -> UIElementUpdate (fun ui -> ui.Opacity <- prop) 
                     | Visibility prop   -> UIElementUpdate (fun ui -> ui.Visibility <- prop) 
@@ -670,37 +711,47 @@ module VDom =
             type ControlStyle with
                 member x.PropertyUpdate() =
                     match x with
-                    | ControlStyle.Background     prop  -> ControlUpdate (fun c -> c.Background <- prop)
-                    | BorderBrush                 prop  -> ControlUpdate (fun c -> c.BorderBrush <- prop)
-                    | BorderThickness             prop  -> ControlUpdate (fun c -> c.BorderThickness <- prop)
-                    | ControlStyle.FontFamily     prop  -> ControlUpdate (fun c -> c.FontFamily <- prop)
-                    | ControlStyle.FontSize       prop  -> ControlUpdate (fun c -> c.FontSize <- prop)
-                    | ControlStyle.FontStretch    prop  -> ControlUpdate (fun c -> c.FontStretch <- prop)
-                    | ControlStyle.FontStyle      prop  -> ControlUpdate (fun c -> c.FontStyle <- prop)
-                    | ControlStyle.FontWeight     prop  -> ControlUpdate (fun c -> c.FontWeight <- prop)
-                    | ControlStyle.Foreground     prop  -> ControlUpdate (fun c -> c.Foreground <- prop)
-                    | HorizontalContentAlignment  prop  -> ControlUpdate (fun c -> c.HorizontalContentAlignment <- prop)
-                    | ControlStyle.Padding        prop  -> ControlUpdate (fun c -> c.Padding <- prop)
-                    | VerticalContentAlignment    prop  -> ControlUpdate (fun c -> c.VerticalContentAlignment <- prop)
+                    | ControlStyle.Background       prop  -> ControlUpdate (fun c -> c.Background <- new SolidColorBrush(prop))
+                    | ControlStyle.BorderBrush      prop  -> ControlUpdate (fun c -> c.BorderBrush <- new SolidColorBrush(prop))
+                    | ControlStyle.BorderThickness  prop  -> ControlUpdate (fun c -> c.BorderThickness <- prop)
+                    | ControlStyle.FontFamily       prop  -> ControlUpdate (fun c -> c.FontFamily <- prop)
+                    | ControlStyle.FontSize         prop  -> ControlUpdate (fun c -> c.FontSize <- prop)
+                    | ControlStyle.FontStretch      prop  -> ControlUpdate (fun c -> c.FontStretch <- prop)
+                    | ControlStyle.FontStyle        prop  -> ControlUpdate (fun c -> c.FontStyle <- prop)
+                    | ControlStyle.FontWeight       prop  -> ControlUpdate (fun c -> c.FontWeight <- prop)
+                    | ControlStyle.Foreground       prop  -> ControlUpdate (fun c -> c.Foreground <- new SolidColorBrush(prop))
+                    | HorizontalContentAlignment    prop  -> ControlUpdate (fun c -> c.HorizontalContentAlignment <- prop)
+                    | ControlStyle.Padding          prop  -> ControlUpdate (fun c -> c.Padding <- prop)
+                    | VerticalContentAlignment      prop  -> ControlUpdate (fun c -> c.VerticalContentAlignment <- prop)
 
             type PanelStyle with
                 member x.PropertyUpdate() =
                     match x with
-                    | PanelStyle.Background     prop -> PanelUpdate (fun p -> p.Background <- prop)
+                    | PanelStyle.Background     prop -> PanelUpdate (fun p -> p.Background <- new SolidColorBrush(prop))
 
             type TextBlockStyle with
                 member x.PropertyUpdate() =
                     match x with
-                    | TextBlockStyle.Background     prop  -> TextBlockUpdate (fun c -> c.Background <- prop)
+                    | TextBlockStyle.Background     prop  -> TextBlockUpdate (fun c -> c.Background <- new SolidColorBrush(prop))
                     | TextBlockStyle.FontFamily     prop  -> TextBlockUpdate (fun c -> c.FontFamily <- prop)
                     | TextBlockStyle.FontSize       prop  -> TextBlockUpdate (fun c -> c.FontSize <- prop)
                     | TextBlockStyle.FontStretch    prop  -> TextBlockUpdate (fun c -> c.FontStretch <- prop)
                     | TextBlockStyle.FontStyle      prop  -> TextBlockUpdate (fun c -> c.FontStyle <- prop)
                     | TextBlockStyle.FontWeight     prop  -> TextBlockUpdate (fun c -> c.FontWeight <- prop)
-                    | TextBlockStyle.Foreground     prop  -> TextBlockUpdate (fun c -> c.Foreground <- prop)
+                    | TextBlockStyle.Foreground     prop  -> TextBlockUpdate (fun c -> c.Foreground <- new SolidColorBrush(prop))
                     | TextBlockStyle.Padding        prop  -> TextBlockUpdate (fun c -> c.Padding <- prop)
 
+            type BorderStyle with
+                member x.PropertyUpdate() =
+                    match x with
+                    | BorderStyle.Background        prop  -> BorderUpdate (fun b -> b.Background <- new SolidColorBrush(prop))
+                    | BorderStyle.BorderBrush       prop  -> BorderUpdate (fun b -> b.BorderBrush <- new SolidColorBrush(prop))
+                    | BorderStyle.BorderThickness   prop  -> BorderUpdate (fun b -> b.BorderThickness <- prop)
 
+            type DecoratorStyle with
+                member x.PropertyUpdate() =
+                    match x with
+                    | BorderStyle bStyle -> bStyle.PropertyUpdate() 
 
             type VStyle with
                 member x.PropertyUpdate() =
@@ -710,6 +761,7 @@ module VDom =
                     | ControlStyle cStyle           -> cStyle.PropertyUpdate()
                     | PanelStyle pStyle             -> pStyle.PropertyUpdate()
                     | TextBlockStyle tbStyle        -> tbStyle.PropertyUpdate()
+                    | DecoratorStyle dStyle         -> dStyle.PropertyUpdate()
 
             type ProgressProperty with
                 member x.PropertyUpdate() =
@@ -846,8 +898,8 @@ module VDom =
             type ShapeProperty with
                 member x.PropertyUpdate() =
                     match x with 
-                    | Fill              prop    -> ShapeUpdate( fun s -> s.Fill <- prop)
-                    | Stroke            prop    -> ShapeUpdate( fun s -> s.Stroke <- prop)
+                    | Fill              prop    -> ShapeUpdate( fun s -> s.Fill <- new SolidColorBrush(prop))
+                    | Stroke            prop    -> ShapeUpdate( fun s -> s.Stroke <- new SolidColorBrush(prop))
                     | StrokeThickness   prop    -> ShapeUpdate( fun s -> s.StrokeThickness <- prop)
                     | LineProperty      lp      -> lp.PropertyUpdate() 
                     | PolyLineProperty  plp     -> plp.PropertyUpdate()
@@ -907,6 +959,7 @@ module VDom =
                     | LineUpdate                update -> update (uiElement :?> Line)
                     | PolyLineUpdate            update -> update (uiElement :?> Polyline)
                     | RectangeUpdate            update -> update (uiElement :?> Rectangle)
+                    | BorderUpdate              update -> update (uiElement :?> Border)
                   )
 
 
@@ -1063,6 +1116,7 @@ module VDom =
                     | LineUpdate                update -> update (uiElement :?> Line)
                     | PolyLineUpdate            update -> update (uiElement :?> Polyline)
                     | RectangeUpdate            update -> update (uiElement :?> Rectangle)
+                    | BorderUpdate              update -> update (uiElement :?> Border)
                     )
 
             let internal addHandlerEvents events (uiElement : UIElement) = handleEvents (fun vevent -> vevent.EventAdd()) events uiElement
@@ -1086,6 +1140,7 @@ module VDom =
                     match x with
                     | Grid        -> new Grid()       :> UIElement
                     | StackPanel  -> new StackPanel() :> UIElement
+                    | Canvas      -> new Canvas()     :> UIElement
             
             type TaggedControl  with
                 member x.Create() =
@@ -1097,10 +1152,16 @@ module VDom =
                     | ProgressBar -> new ProgressBar()  :> UIElement
                     | TextBox     -> new TextBox()      :> UIElement
                     | Slider      -> new Slider()       :> UIElement
+                    | Ellipse     -> new Ellipse()      :> UIElement
                     | Line        -> new Line()         :> UIElement
                     | Rectangle   -> new Rectangle()    :> UIElement
                     | Polyline    -> new Polyline()     :> UIElement
         
+            type TaggedBorder with
+                member x.Create() =
+                    match x with
+                    | Border      -> new Border()       :> UIElement
+
             type TaggedTextBlock with
                 member x.Create() =
                     match x with
@@ -1111,6 +1172,7 @@ module VDom =
                     match x with
                     | TaggedControl     tc  -> tc.Create()
                     | TaggedTextBlock   ttb -> ttb.Create()
+                    | TaggedBorder      tb  -> tb.Create()
 
             type TaggedItems with
                 member x.Create() =

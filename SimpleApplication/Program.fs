@@ -5,6 +5,7 @@ open System.Windows
 open Elmish.DSL.DSL
 open Elmish.ProgramTypes
 open Elmish.Program
+open Algae.Style
 
 module MVU =
     open System.Windows.Media
@@ -92,18 +93,18 @@ module MVU =
                     style = new Style(Row = 4) ,
                     Children = 
                         [ yield WPF.checkBox()
-                          yield WPF.rectangle( Fill = Brushes.Black
-                                              ,Stroke = Brushes.Red
+                          yield WPF.rectangle( Fill = Colors.Black
+                                              ,Stroke = Colors.Red
                                               ,StrokeThickness = 10.0
                                               ,style = 
                                                 new Style( Height = 100. ,
                                                            Width  = 100.)  
                                              )
-                          yield WPF.line( Stroke = Brushes.Red
+                          yield WPF.line( Stroke = Colors.Red
                                          ,StrokeThickness = 3.5
                                          ,Coordinate = {X1 = 0.0; Y1 = 0.0; X2 = 0.0; Y2 = 50.0}
                                         )
-                          yield WPF.polyline( Stroke = Brushes.Blue
+                          yield WPF.polyline( Stroke = Colors.Blue
                                              ,StrokeThickness = 3.5
                                              ,Points = 
                                                 [   
@@ -133,14 +134,88 @@ module MVU =
                                   Height = 300.) )                
 
 
+
+
+
+
+    let viewGridChildrenAlgae (model:Model) = 
+
+        [   
+            
+            if model.IsClicked then 
+                yield Algae.button( content = "Say Hello!", 
+                                    Click = fun _ -> MsgUpdate    ) 
+                yield WPF.textBlock( style = new Style(Row = 2), Text = "Hello WPF!")
+            else
+                yield Algae.button( content = "Say Hello!", 
+                                    Click = fun _ -> MsgUpdate    ) 
+                              
+            yield WPF.textBlock( style = new Style(Row = 1), Text = (sprintf "Ticks : %i !" model.Ticks) )
+            yield Algae.progressBar( style = new Style(Row = 3), IsIndeterminate = true)
+            yield WPF.stackPanel( 
+                    style = new Style(Row = 4) ,
+                    Children = 
+                        [ yield Algae.checkBox("test")
+                          yield WPF.rectangle( Fill = Colors.Black
+                                              ,Stroke = Colors.Red
+                                              ,StrokeThickness = 10.0
+                                              ,style = 
+                                                new Style( Height = 100. ,
+                                                           Width  = 100.)  
+                                             )
+                          yield WPF.line( Stroke = Colors.Red
+                                         ,StrokeThickness = 3.5
+                                         ,Coordinate = {X1 = 0.0; Y1 = 0.0; X2 = 0.0; Y2 = 50.0}
+                                        )
+                          yield WPF.polyline( Stroke = Colors.Blue
+                                             ,StrokeThickness = 3.5
+                                             ,Points = 
+                                                [   
+                                                    {X = 50.0 ; Y = 0.0}
+                                                    {X = 50.0 ; Y = 50.0}
+                                                    {X = 0.0 ; Y = 0.0}
+                                                    {X = 0.0 ; Y = 50.0}
+                                                ]
+                                             )
+                          yield Algae.textBox(text = "What's up")
+                          yield Algae.comboBox( children = [for i in 1 .. 4 -> Algae.textBox(text = "What's up") ] )
+                          yield Algae.radioButton(content = "hola")
+                          yield Algae.slider()
+                          yield Algae.toggleButton(content = "hola2")
+                          
+                          
+                        ]
+                   )
+
+        ]
+
+    
+    let viewAlgae (model:Model) =
+        Algae.window( WPF.grid( RowDefinitions = 
+                                    [  {Height=5;Unit=GridUnitType.Star}
+                                       {Height=3;Unit=GridUnitType.Star}
+                                       {Height=3;Unit=GridUnitType.Star}
+                                       {Height=3;Unit=GridUnitType.Star}
+                                       {Height=15;Unit=GridUnitType.Star}
+                                    ],                              
+                              Children = viewGridChildrenAlgae model )  )              
+    
+
+
 open MVU
 
 [<STAThread>]
 [<EntryPoint>]
 let main argv = 
     
+    
+    let view isNative = 
+        if isNative then
+            view
+        else
+            viewAlgae
     //mkMVUSimple init view update
-    mkMVUProgram init view update
+    mkMVUProgram init (view false) update
     |> run
     
     0

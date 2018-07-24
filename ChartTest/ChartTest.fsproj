@@ -5,15 +5,15 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>5c0cd522-0f49-46dd-b25a-b628a7697f5c</ProjectGuid>
+    <ProjectGuid>edb6ab3c-42c5-420a-9cff-91e023f7b998</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>ConsoleApplication1</RootNamespace>
-    <AssemblyName>ConsoleApplication1</AssemblyName>
+    <RootNamespace>ChartTest</RootNamespace>
+    <AssemblyName>ChartTest</AssemblyName>
     <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <UseStandardResourceNames>true</UseStandardResourceNames>
     <TargetFSharpCoreVersion>4.4.3.0</TargetFSharpCoreVersion>
-    <Name>SimpleApplication</Name>
+    <Name>ChartTest</Name>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -76,14 +76,13 @@
       <HintPath>..\packages\System.ValueTuple.4.4.0\lib\net461\System.ValueTuple.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="System.Xaml" />
     <Reference Include="UIAutomationTypes" />
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Algae\Algae.fsproj">
-      <Name>Algae</Name>
-      <Project>{325b711a-c8bf-4d5b-ade2-30bba62a6698}</Project>
+    <ProjectReference Include="..\ElmishStyle\ElmishChart.fsproj">
+      <Name>ElmishChart</Name>
+      <Project>{4cbe7fd1-7ab0-4116-8344-f42dde2efa46}</Project>
       <Private>True</Private>
     </ProjectReference>
     <ProjectReference Include="..\Elmish\Elmish.fsproj">

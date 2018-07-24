@@ -43,19 +43,12 @@ module simpleViewer =
     open types
     open Elmish.ProgramTypes
 
-    let sampleRate = 44100 // 44.1kHz
-    let power = 12
+    let sampleRate = 100000 // 44.1kHz
+    let power = 10
     let fftSamplingRate = pown 2 power
     let otherSamplingRate = 4410
     let bands = 20
 
-    let printing level =
-        //let spaces = String.replicate (level) " "
-        printf "%s" (String.replicate 60 " ")
-        System.Console.SetCursorPosition(0, System.Console.CursorTop)
-        //printf "%s|" spaces
-        printf "%s %i" (String.replicate 30 " ") level
-        System.Console.SetCursorPosition(0, System.Console.CursorTop)
         
     let peakValue (data:float list) =
         data
@@ -78,7 +71,7 @@ module simpleViewer =
     
     let fftValue (data:float list) =
         //let maxfrequency = sampleRate / 20
-        let maxfrequency = 1500 // 1kHz
+        let maxfrequency = 8000 // 1kHz
 
         let map = 
             let mutable f = Map.empty<int*int,float list>
@@ -104,6 +97,7 @@ module simpleViewer =
         |> List.rev
         |> List.toArray
         |> toFFT
+        |> Array.skip 1
         |> Array.take (fftSamplingRate/2)
         |> Array.mapi(fun index v -> (index * sampleRate / fftSamplingRate,v) )
         |> Array.fold(fun (min,max,map) (freq,c) -> 
